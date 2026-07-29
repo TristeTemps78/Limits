@@ -26,6 +26,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var claudeRuntime = ProviderRuntime()
     @Published private(set) var codexRuntime = ProviderRuntime()
     @Published private(set) var lastSnapshotWriteSucceeded = true
+    @Published private(set) var lastSnapshotError: SnapshotStoreError?
     @Published var refreshNotice: String?
 
     private let policy = PollingPolicy()
@@ -233,14 +234,30 @@ final class DashboardViewModel: ObservableObject {
         let snapshots = SharedUsageSnapshots(
             updatedAt: Date(),
             claude: claudeRuntime.lastSnapshot,
-            codex: codexRuntime.lastSnapshot
+            codex: codexRuntime.lastSnapshot,
+            claudeStatus: connectionStatus(isConnected: claudeConnected, pollingState: claudeRuntime.pollingState),
+            codexStatus: connectionStatus(isConnected: codexConnected, pollingState: codexRuntime.pollingState)
         )
         switch snapshotStore.write(snapshots) {
         case .success:
             lastSnapshotWriteSucceeded = true
-        case .failure:
+            lastSnapshotError = nil
+        case .failure(let error):
             lastSnapshotWriteSucceeded = false
+            lastSnapshotError = error
         }
+    }
+
+    /// `ProviderConnectionStatus.swift`'s doc comment notes this field is written by
+    /// "T3.1's background-refresh loop" — but the foreground path already has every
+    /// piece of information needed to report it accurately, so it's wired up here
+    /// too rather than left `nil` until a later lot. T3.1 only needs to add the same
+    /// mapping on the background-fetch path; nothing here should need to change for
+    /// that to slot in cleanly.
+    private func connectionStatus(isConnected: Bool, pollingState: PollingState) -> ProviderConnectionStatus {
+        guard isConnected else { return .notConnected }
+        if case .needsReconnect = pollingState { return .needsReconnect }
+        return .connected
     }
 
     static func noticeText(for decision: AppRefreshGate.Decision) -> String? {

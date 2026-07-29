@@ -20,12 +20,20 @@ enum GaugeStyle: String, CaseIterable, Identifiable {
 }
 
 /// Renders one window's percent as either a ring or a bar, per `GaugeStyle`. Purely
-/// presentational — the percent is already 0-100 by the time it gets here
-/// (`AppPercentFormatter` does the clamping/rounding).
+/// presentational. The percent *text* comes from `Double.roundedPercentText`
+/// (`LimitsCore/PercentFormatting.swift`) — the one rounding rule shared with the
+/// widget (T2.3), so the same fetch never reads "8%" on one and "9%" on the other.
+/// The 0-1 fill fraction below is drawing-only, not displayed text, so it's computed
+/// locally the same way `Widgets/Gauges/RingGauge.swift`/`BarGauge.swift` do (there's
+/// nothing to disagree about here — clamping a value already known to be 0-100).
 struct UsageGaugeView: View {
     let percent: Double
     let style: GaugeStyle
     let tint: Color
+
+    private var clampedFraction: Double {
+        min(max(percent, 0), 100) / 100
+    }
 
     var body: some View {
         switch style {
@@ -34,10 +42,10 @@ struct UsageGaugeView: View {
                 Circle()
                     .stroke(tint.opacity(0.2), lineWidth: 6)
                 Circle()
-                    .trim(from: 0, to: AppPercentFormatter.fraction(percent: percent))
+                    .trim(from: 0, to: clampedFraction)
                     .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text(AppPercentFormatter.label(percent: percent))
+                Text(percent.roundedPercentText)
                     .font(.caption2)
                     .fontWeight(.semibold)
             }
@@ -50,11 +58,11 @@ struct UsageGaugeView: View {
                         Capsule().fill(tint.opacity(0.2))
                         Capsule()
                             .fill(tint)
-                            .frame(width: geometry.size.width * AppPercentFormatter.fraction(percent: percent))
+                            .frame(width: geometry.size.width * clampedFraction)
                     }
                 }
                 .frame(height: 8)
-                Text(AppPercentFormatter.label(percent: percent))
+                Text(percent.roundedPercentText)
                     .font(.caption2)
             }
         }

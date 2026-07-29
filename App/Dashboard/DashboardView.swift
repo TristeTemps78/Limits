@@ -2,10 +2,10 @@ import SwiftUI
 import LimitsCore
 
 /// The dashboard tab. Freshness ages and countdowns need to visibly move without the
-/// view model publishing a change every second — `TimelineView` recomputes the
-/// presentation state (`AppProviderDashboardStateBuilder.build`, a pure LimitsCore
-/// function) against a live `now` every 60s, which is exactly what
-/// `AppFreshnessFormatter`'s coarse-grained buckets need and no more.
+/// view model publishing a change every second — `TimelineView` supplies a live `now`
+/// every 60s, which `ProviderDashboardSectionView` feeds into `SnapshotFreshness`/
+/// `WindowPresentation` (both `LimitsCore`, shared with the widget — T2.3) to render
+/// freshness labels and reset countdowns identically to how the widget renders them.
 struct DashboardView: View {
     @EnvironmentObject private var settings: AppSettingsStore
     @StateObject private var model = DashboardViewModel()
@@ -18,25 +18,25 @@ struct DashboardView: View {
                         emptyState
                     } else {
                         VStack(alignment: .leading, spacing: 20) {
-                            if model.lastSnapshotWriteSucceeded == false {
-                                appGroupWarningBanner
+                            if let snapshotError = model.lastSnapshotError {
+                                appGroupWarningBanner(message: snapshotError.widgetDiagnosticMessage)
                             }
 
                             if model.claudeConnected {
                                 ProviderDashboardSectionView(
                                     title: "Claude",
-                                    state: claudeState(now: context.date),
+                                    state: claudeState,
                                     gaugeStyle: settings.gaugeStyle,
-                                    tint: .orange
+                                    now: context.date
                                 )
                             }
 
                             if model.codexConnected {
                                 ProviderDashboardSectionView(
                                     title: "Codex",
-                                    state: codexState(now: context.date),
+                                    state: codexState,
                                     gaugeStyle: settings.gaugeStyle,
-                                    tint: .teal
+                                    now: context.date
                                 )
                             }
                         }
@@ -70,23 +70,21 @@ struct DashboardView: View {
         }
     }
 
-    private func claudeState(now: Date) -> AppProviderDashboardState {
+    private var claudeState: AppProviderDashboardState {
         AppProviderDashboardStateBuilder.build(
             isConnected: model.claudeConnected,
             lastSnapshot: model.claudeRuntime.lastSnapshot,
             pollingState: model.claudeRuntime.pollingState,
-            lastOutcome: model.claudeRuntime.lastOutcome,
-            now: now
+            lastOutcome: model.claudeRuntime.lastOutcome
         )
     }
 
-    private func codexState(now: Date) -> AppProviderDashboardState {
+    private var codexState: AppProviderDashboardState {
         AppProviderDashboardStateBuilder.build(
             isConnected: model.codexConnected,
             lastSnapshot: model.codexRuntime.lastSnapshot,
             pollingState: model.codexRuntime.pollingState,
-            lastOutcome: model.codexRuntime.lastOutcome,
-            now: now
+            lastOutcome: model.codexRuntime.lastOutcome
         )
     }
 
@@ -113,9 +111,14 @@ struct DashboardView: View {
         .padding()
     }
 
-    private var appGroupWarningBanner: some View {
+    /// `message` reuses `SnapshotStoreError.widgetDiagnosticMessage` (`WidgetCopy.swift`,
+    /// T2.3) so the wording matches whatever the widget itself would show for the
+    /// same underlying failure — e.g. "App Group indisponible" vs "Mets à jour l'app"
+    /// are genuinely different situations (see that type's own doc comment) and
+    /// deserve different, but consistently-worded, messages.
+    private func appGroupWarningBanner(message: String) -> some View {
         Label(
-            "Les widgets ne recevront pas de données à jour (App Group indisponible). L'app reste utilisable.",
+            "Les widgets ne recevront pas de données à jour (\(message)). L'app reste utilisable.",
             systemImage: "exclamationmark.triangle.fill"
         )
         .font(.caption)
