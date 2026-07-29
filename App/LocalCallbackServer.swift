@@ -42,13 +42,21 @@ public final class LocalCallbackServer {
     /// `code`/`state` from the first well-formed callback request, or with a
     /// `ServerError`. Stops the listener immediately after that — never lingers past
     /// its one job.
+    ///
+    /// `onBound` fires once, as soon as a listener is actually accepting connections
+    /// — with **which** port it bound to, `:1455` or the `:1457` fallback. The
+    /// authorize URL's `redirect_uri` must be built with that exact port: opening the
+    /// browser against a hardcoded `:1455` while the server silently fell back to
+    /// `:1457` would mean the redirect lands on a port nothing is listening on
+    /// anymore. Callers should open the browser from `onBound`, not before.
     public func start(
         ports: [UInt16] = [1455, 1457],
+        onBound: @escaping (UInt16) -> Void,
         completion: @escaping (Result<OAuthCallback, ServerError>) -> Void
     ) {
         queue.async { [weak self] in
             self?.didComplete = false
-            self?.bind(remainingPorts: ports, tried: [], completion: completion)
+            self?.bind(remainingPorts: ports, tried: [], onBound: onBound, completion: completion)
         }
     }
 
@@ -62,6 +70,7 @@ public final class LocalCallbackServer {
     private func bind(
         remainingPorts: [UInt16],
         tried: [UInt16],
+        onBound: @escaping (UInt16) -> Void,
         completion: @escaping (Result<OAuthCallback, ServerError>) -> Void
     ) {
         guard let port = remainingPorts.first, let nwPort = NWEndpoint.Port(rawValue: port) else {
@@ -79,17 +88,19 @@ public final class LocalCallbackServer {
         parameters.requiredInterfaceType = .loopback
 
         guard let newListener = try? NWListener(using: parameters, on: nwPort) else {
-            bind(remainingPorts: Array(remainingPorts.dropFirst()), tried: tried + [port], completion: completion)
+            bind(remainingPorts: Array(remainingPorts.dropFirst()), tried: tried + [port], onBound: onBound, completion: completion)
             return
         }
 
         newListener.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
             switch state {
+            case .ready:
+                onBound(port)
             case .failed, .cancelled:
                 guard !self.didComplete else { return }
                 self.listener = nil
-                self.bind(remainingPorts: Array(remainingPorts.dropFirst()), tried: tried + [port], completion: completion)
+                self.bind(remainingPorts: Array(remainingPorts.dropFirst()), tried: tried + [port], onBound: onBound, completion: completion)
             default:
                 break
             }

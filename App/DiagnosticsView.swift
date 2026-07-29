@@ -10,42 +10,45 @@ struct DiagnosticsView: View {
     @StateObject private var model = DiagnosticsViewModel()
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Identifiants") {
-                    LabeledContent("App Group demandé", value: model.appGroupIdentifier)
-                }
+        // No NavigationStack of its own (T2.4): this screen is now always pushed
+        // from Settings' NavigationStack (see SettingsView.swift) — nesting a second
+        // NavigationStack here would risk a double nav bar / broken back button.
+        // Still usable standalone if a future caller wraps it in its own
+        // NavigationStack.
+        List {
+            Section("Identifiants") {
+                LabeledContent("App Group demandé", value: model.appGroupIdentifier)
+            }
 
-                Section("Canaux") {
-                    ForEach(SharedChannel.allCases, id: \.self) { channel in
-                        ChannelRow(
-                            channel: channel,
-                            writeResult: model.writeResults[channel],
-                            readResult: model.readResults[channel]
-                        )
-                    }
-                }
-
-                Section {
-                    if let lastActionAt = model.lastActionAt {
-                        LabeledContent("Dernière écriture", value: lastActionAt.formatted(date: .omitted, time: .standard))
-                    }
-                    LabeledContent("Compteur", value: "\(model.writeCount)")
-                }
-
-                Section {
-                    Button("Écrire maintenant") {
-                        model.writeNow()
-                    }
-                    Button("Recharger les timelines des widgets") {
-                        model.reloadWidgets()
-                    }
+            Section("Canaux") {
+                ForEach(SharedChannel.allCases, id: \.self) { channel in
+                    ChannelRow(
+                        channel: channel,
+                        writeResult: model.writeResults[channel],
+                        readResult: model.readResults[channel]
+                    )
                 }
             }
-            .navigationTitle("Diagnostic App Group")
-            .task {
-                model.onAppear()
+
+            Section {
+                if let lastActionAt = model.lastActionAt {
+                    LabeledContent("Dernière écriture", value: lastActionAt.formatted(date: .omitted, time: .standard))
+                }
+                LabeledContent("Compteur", value: "\(model.writeCount)")
             }
+
+            Section {
+                Button("Écrire maintenant") {
+                    model.writeNow()
+                }
+                Button("Recharger les timelines des widgets") {
+                    model.reloadWidgets()
+                }
+            }
+        }
+        .navigationTitle("Diagnostic App Group")
+        .task {
+            model.onAppear()
         }
     }
 }
