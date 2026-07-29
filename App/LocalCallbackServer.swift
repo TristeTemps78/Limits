@@ -35,6 +35,10 @@ public final class LocalCallbackServer {
     private let queue = DispatchQueue(label: "com.caldf.limitsapp.local-callback-server")
     private var listener: NWListener?
     private var didComplete = false
+    /// Set by `stop()`. Distinguishes « le listener s'est fermé parce qu'on lui a
+    /// demandé » de « le bind a échoué, essaie le port suivant » — sans quoi une
+    /// annulation par l'utilisateur relancerait la cascade de ports (cf. `bind`).
+    private var didStop = false
 
     public init() {}
 
@@ -56,12 +60,17 @@ public final class LocalCallbackServer {
     ) {
         queue.async { [weak self] in
             self?.didComplete = false
+            self?.didStop = false
             self?.bind(remainingPorts: ports, tried: [], onBound: onBound, completion: completion)
         }
     }
 
+    /// Arrête définitivement cette tentative. `completion` ne sera **jamais** appelé
+    /// après un `stop()` : une annulation de l'utilisateur n'est pas un échec technique
+    /// et ne doit produire aucun message d'erreur.
     public func stop() {
         queue.async { [weak self] in
+            self?.didStop = true
             self?.listener?.cancel()
             self?.listener = nil
         }
@@ -73,6 +82,11 @@ public final class LocalCallbackServer {
         onBound: @escaping (UInt16) -> Void,
         completion: @escaping (Result<OAuthCallback, ServerError>) -> Void
     ) {
+        // Un `stop()` peut arriver entre deux tentatives de bind (l'utilisateur ferme la
+        // feuille web pendant la cascade de ports) : on n'ouvre alors plus rien et on ne
+        // remonte aucune erreur.
+        guard !didStop, !didComplete else { return }
+
         guard let port = remainingPorts.first, let nwPort = NWEndpoint.Port(rawValue: port) else {
             completion(.failure(.portsUnavailable(tried: tried)))
             return
@@ -98,7 +112,13 @@ public final class LocalCallbackServer {
             case .ready:
                 onBound(port)
             case .failed, .cancelled:
-                guard !self.didComplete else { return }
+                // `.cancelled` arrive aussi bien quand le bind a échoué que quand *nous*
+                // avons appelé `stop()`. Sans le garde `didStop`, une annulation par
+                // l'utilisateur relançait un listener sur le port de repli (:1457) — qui
+                // restait ouvert — puis, la liste de ports épuisée, appelait
+                // `completion(.failure(.portsUnavailable))`, donc affichait « port local
+                // indisponible » à quelqu'un qui avait simplement fermé la fenêtre.
+                guard !self.didComplete, !self.didStop else { return }
                 self.listener = nil
                 self.bind(remainingPorts: Array(remainingPorts.dropFirst()), tried: tried + [port], onBound: onBound, completion: completion)
             default:
