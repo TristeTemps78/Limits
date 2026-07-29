@@ -1,0 +1,61 @@
+name: Limits
+options:
+  bundleIdPrefix: com.caldf
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  LimitsCore:
+    path: LimitsCore
+
+targets:
+  Limits:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: App
+    info:
+      path: App/Info.plist
+    entitlements:
+      path: App/Limits.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.caldf.limitsapp
+        PRODUCT_NAME: Limits
+        DEVELOPMENT_LANGUAGE: en
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+    dependencies:
+      - package: LimitsCore
+      - target: LimitsWidgets
+        embed: true
+        codeSign: false
+    scheme:
+      Limits:
+        build:
+          targets:
+            Limits: all
+        archive:
+          config: Release
+
+  LimitsWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Widgets
+    info:
+      path: Widgets/Info.plist
+    entitlements:
+      path: Widgets/LimitsWidgets.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.caldf.limitsapp.widgets
+        PRODUCT_NAME: LimitsWidgets
+        DEVELOPMENT_LANGUAGE: en
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+    dependencies:
+      - package: LimitsCore

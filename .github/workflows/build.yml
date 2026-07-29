@@ -1,0 +1,84 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: swift test (LimitsCore)
+        run: swift test --package-path LimitsCore
+
+  ipa:
+    runs-on: macos-15
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List available Xcode versions
+        run: ls /Applications | grep Xcode
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: xcodebuild -version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project (project.yml is the source of truth)
+        run: xcodegen generate
+
+      - name: Archive (unsigned — Sideloadly signs later)
+        run: >
+          xcodebuild -project Limits.xcodeproj -scheme Limits -configuration Release
+          -sdk iphoneos -destination 'generic/platform=iOS'
+          -archivePath build/Limits.xcarchive archive
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          mkdir -p build/Payload
+          cp -R build/Limits.xcarchive/Products/Applications/Limits.app build/Payload/
+
+          # Classic silent failure: an IPA that "looks" valid but has no widget to pose
+          # on the home/lock screen because the extension wasn't embedded.
+          if [ ! -d "build/Payload/Limits.app/PlugIns/LimitsWidgets.appex" ]; then
+            echo "::error::LimitsWidgets.appex missing from Limits.app/PlugIns — widget extension was not embedded."
+            exit 1
+          fi
+
+          cd build && zip -r Limits.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Limits-ipa
+          path: build/Limits.ipa
+
+  release:
+    runs-on: macos-15
+    needs: ipa
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Limits-ipa
+          path: build
+
+      - name: Create GitHub release with IPA asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" build/Limits.ipa \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
