@@ -10,14 +10,17 @@ import LimitsCore
 /// the same types the widget uses, so a percent or an age never disagrees between
 /// the app and the widget for the same underlying data.
 struct ProviderDashboardSectionView: View {
-    let title: String
+    /// Le provider, et non seulement son titre : certains messages doivent le nommer
+    /// (cf. `UnexpectedPayloadDetector.userFacingMessage`), et le libelle affiche vient
+    /// de `ProviderKind.displayName` (LimitsCore) plutot que d'une chaine recopiee.
+    let provider: ProviderKind
     let state: AppProviderDashboardState
     let gaugeStyle: GaugeStyle
     let now: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(provider.displayName)
                 .font(.headline)
 
             switch state {
@@ -36,6 +39,16 @@ struct ProviderDashboardSectionView: View {
 
             case .content(let snapshot):
                 contentBody(snapshot: snapshot)
+
+            case .unexpectedPayload:
+                // Message explicite « inutile de te reconnecter » : c'est le contresens que
+                // cet état existe pour éviter (le parsing tolérant échoue en silence).
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.bubble")
+                        .foregroundStyle(.orange)
+                    Text(UnexpectedPayloadDetector.userFacingMessage(for: provider))
+                        .font(.caption)
+                }
 
             case .staleContent(let snapshot, let reason, let retryAt):
                 contentBody(snapshot: snapshot)

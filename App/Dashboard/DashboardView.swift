@@ -24,7 +24,7 @@ struct DashboardView: View {
 
                             if model.claudeConnected {
                                 ProviderDashboardSectionView(
-                                    title: "Claude",
+                                    provider: .claude,
                                     state: claudeState,
                                     gaugeStyle: settings.gaugeStyle,
                                     now: context.date
@@ -33,7 +33,7 @@ struct DashboardView: View {
 
                             if model.codexConnected {
                                 ProviderDashboardSectionView(
-                                    title: "Codex",
+                                    provider: .codex,
                                     state: codexState,
                                     gaugeStyle: settings.gaugeStyle,
                                     now: context.date
