@@ -7,8 +7,9 @@
 
 ## Phase 0 — Bootstrap (Opus, séquentiel)
 
-- 🔒 in-progress — **T0.1 Repo GitHub public + remote** — @claude-opus — 2026-07-29
-  Créer le repo public (gh), pousser. *Accept : `git push` OK, repo visible.*
+- ✅ done — **T0.1 Repo GitHub public + remote** — @claude-opus — 2026-07-29
+  https://github.com/TristeTemps78/Limits (public, `main`, remote `origin`). Fixtures
+  vérifiées anonymisées avant publication (aucun secret dans l'historique).
 - 🔒 in-progress — **T0.2 Scaffold XcodeGen 3 targets** — @sonnet-a — 2026-07-29
   `project.yml` : app iOS 17+ `com.caldf.limitsapp`, extension WidgetKit, package
   `LimitsCore` (squelettes compilables minimaux). *Accept : `xcodegen generate` +
