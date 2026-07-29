@@ -1,0 +1,108 @@
+﻿{
+    "profile":  {
+                    "username":  "REDACTED",
+                    "display_name":  "REDACTED",
+                    "profile_picture_url":  "REDACTED"
+                },
+    "stats":  {
+                  "lifetime_tokens":  214300992,
+                  "peak_daily_tokens":  110286330,
+                  "current_streak_days":  8,
+                  "longest_streak_days":  8,
+                  "total_threads":  79,
+                  "longest_running_turn_sec":  474,
+                  "fast_mode_usage_percentage":  0.0,
+                  "total_skills_used":  0,
+                  "unique_skills_used":  0,
+                  "most_used_reasoning_effort":  "medium",
+                  "most_used_reasoning_effort_percentage":  91.635687732342,
+                  "daily_usage_buckets":  [
+                                              {
+                                                  "start_date":  "2026-07-21",
+                                                  "tokens":  6883692
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-22",
+                                                  "tokens":  17389405
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-23",
+                                                  "tokens":  3099835
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-24",
+                                                  "tokens":  161780
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-25",
+                                                  "tokens":  39941801
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-26",
+                                                  "tokens":  20490566
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-27",
+                                                  "tokens":  16047583
+                                              },
+                                              {
+                                                  "start_date":  "2026-07-28",
+                                                  "tokens":  110286330
+                                              }
+                                          ],
+                  "cumulative_daily_usage_buckets":  [
+                                                         {
+                                                             "start_date":  "2026-07-21",
+                                                             "tokens":  6883692
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-22",
+                                                             "tokens":  24273097
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-23",
+                                                             "tokens":  27372932
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-24",
+                                                             "tokens":  27534712
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-25",
+                                                             "tokens":  67476513
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-26",
+                                                             "tokens":  87967079
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-27",
+                                                             "tokens":  104014662
+                                                         },
+                                                         {
+                                                             "start_date":  "2026-07-28",
+                                                             "tokens":  214300992
+                                                         }
+                                                     ],
+                  "weekly_usage_buckets":  [
+                                               {
+                                                   "start_date":  "2026-07-20",
+                                                   "tokens":  87967079
+                                               },
+                                               {
+                                                   "start_date":  "2026-07-27",
+                                                   "tokens":  126333913
+                                               }
+                                           ],
+                  "top_invocations":  [
+
+                                      ],
+                  "workspace_rank":  null,
+                  "workspace_total_user_count":  null
+              },
+    "metadata":  {
+                     "stats_as_of":  "2026-07-29",
+                     "generated_at":  "2026-07-29T09:10:29.375242Z",
+                     "stats_error":  null
+                 }
+}

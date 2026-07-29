@@ -1,0 +1,91 @@
+﻿{
+    "five_hour":  {
+                      "utilization":  0.0,
+                      "resets_at":  null,
+                      "limit_dollars":  null,
+                      "used_dollars":  null,
+                      "remaining_dollars":  null
+                  },
+    "seven_day":  {
+                      "utilization":  8.0,
+                      "resets_at":  "2026-08-04T17:59:59.981775+00:00",
+                      "limit_dollars":  null,
+                      "used_dollars":  null,
+                      "remaining_dollars":  null
+                  },
+    "seven_day_oauth_apps":  null,
+    "seven_day_opus":  null,
+    "seven_day_sonnet":  null,
+    "seven_day_cowork":  null,
+    "seven_day_omelette":  null,
+    "tangelo":  null,
+    "iguana_necktie":  null,
+    "omelette_promotional":  null,
+    "nimbus_quill":  null,
+    "cinder_cove":  null,
+    "amber_ladder":  null,
+    "extra_usage":  {
+                        "is_enabled":  false,
+                        "monthly_limit":  16000,
+                        "used_credits":  15558.0,
+                        "utilization":  97.2375,
+                        "currency":  "AUD",
+                        "decimal_places":  2,
+                        "disabled_reason":  "out_of_credits",
+                        "user_disabled":  false,
+                        "spend_limit_reached":  false,
+                        "credits_ever_enabled":  true,
+                        "daily":  null,
+                        "weekly":  null
+                    },
+    "limits":  [
+                   {
+                       "kind":  "session",
+                       "group":  "session",
+                       "percent":  0,
+                       "severity":  "normal",
+                       "resets_at":  null,
+                       "scope":  null,
+                       "is_active":  false
+                   },
+                   {
+                       "kind":  "weekly_all",
+                       "group":  "weekly",
+                       "percent":  8,
+                       "severity":  "normal",
+                       "resets_at":  "2026-08-04T17:59:59.981775+00:00",
+                       "scope":  null,
+                       "is_active":  true
+                   }
+               ],
+    "spend":  {
+                  "used":  {
+                               "amount_minor":  15558,
+                               "currency":  "AUD",
+                               "exponent":  2
+                           },
+                  "limit":  {
+                                "amount_minor":  16000,
+                                "currency":  "AUD",
+                                "exponent":  2
+                            },
+                  "percent":  97,
+                  "severity":  "critical",
+                  "enabled":  false,
+                  "disabled_reason":  "out_of_credits",
+                  "cap":  {
+                              "money":  {
+                                            "amount_minor":  16000,
+                                            "currency":  "AUD",
+                                            "exponent":  2
+                                        },
+                              "credits":  null
+                          },
+                  "balance":  null,
+                  "auto_reload":  null,
+                  "disclaimer":  "Usage credits cover you when you hit your plan limits. [Learn more](https://support.claude.com/articles/12429409)",
+                  "can_purchase_credits":  false,
+                  "can_toggle":  false
+              },
+    "member_dashboard_available":  false
+}
