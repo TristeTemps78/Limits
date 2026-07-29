@@ -83,4 +83,22 @@ final class SharedFileStoreTests: XCTestCase {
             XCTAssertFalse(reason.isEmpty)
         }
     }
+
+    /// A nil container (entitlement lost) and a merely-unwritten file in a perfectly
+    /// good container are two very different diagnoses — the first means the App
+    /// Group itself is broken, the second just means nobody has written yet. Both
+    /// currently produce a non-empty message (checked above), but only this
+    /// assertion locks in that a future change can't accidentally make the two
+    /// messages converge, which would silently remove the distinction the T1.1 gate
+    /// actually reads.
+    func testContainerNilAndFileMissingProduceDistinctReasons() throws {
+        let containerNilReason = try XCTUnwrap(SharedFileStore(containerURL: nil).read().failureReason)
+        let fileMissingReason = try XCTUnwrap(SharedFileStore(containerURL: tempContainer).read().failureReason)
+
+        XCTAssertNotEqual(
+            containerNilReason,
+            fileMissingReason,
+            "a broken App Group (nil container) and a merely-unwritten file must stay distinguishable"
+        )
+    }
 }
