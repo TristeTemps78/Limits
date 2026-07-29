@@ -61,6 +61,16 @@ public struct UsageRefreshService {
             return Result_(outcome: .unauthorized, snapshot: nil)
         }
 
+        // Codex sans `account_id` : l'en-tête `ChatGPT-Account-ID` est obligatoire, donc
+        // l'appel échouerait. Il faut le détecter **ici**, avant tout appel réseau : sinon
+        // le 401 qui en résulterait déclencherait une tentative de refresh, laquelle ne
+        // renvoie jamais d'`account_id` (on conserve celui d'avant, donc toujours nul) —
+        // on retenterait indéfiniment un appel structurellement voué à échouer. C'est un
+        // état de connexion incomplète : seule une reconnexion le répare.
+        if provider == .codex, tokens.accountID == nil {
+            return Result_(outcome: .unauthorized, snapshot: nil)
+        }
+
         switch await fetch(provider: provider, tokens: tokens) {
         case .success(let snapshot):
             return Result_(outcome: .success, snapshot: snapshot)
