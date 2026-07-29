@@ -52,7 +52,10 @@ final class SnapshotStoreTests: XCTestCase {
 
     func testWriteFailsExplicitlyWhenContainerURLIsNil() {
         let store = SnapshotStore(containerURL: nil)
-        XCTAssertEqual(store.write(makeBundle()), .failure(.containerUnavailable))
+        guard case .failure(let error) = store.write(makeBundle()) else {
+            return XCTFail("write should fail when the container is unavailable")
+        }
+        XCTAssertEqual(error, .containerUnavailable)
     }
 
     func testReadFailsExplicitlyOnCorruptedJSON() throws {
