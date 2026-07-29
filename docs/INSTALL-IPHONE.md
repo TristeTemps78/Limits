@@ -54,6 +54,51 @@ Dans Sideloadly : activer **Wi-Fi sideload / auto-refresh** (menu réglages). Ta
 PC est allumé sur le même Wi-Fi au moins une fois par semaine, la re-signature est
 automatique. Sinon : rebrancher l'USB et refaire l'étape 3 (2 min, données conservées).
 
+## 6. Le test de dérisquage (gate M1) — 5 min, à faire au premier lancement
+
+C'est **le** test qui décide de l'architecture du projet. Avec un Apple ID gratuit, les
+App Groups ne sont pas créables dans le portail développeur et Sideloadly **remappe** les
+identifiants à la re-signature : rien ne garantit a priori que l'app et le widget partagent
+encore des données. L'app embarque donc un écran de diagnostic dédié.
+
+**Réglages → Diagnostic App Group.** L'écran écrit une valeur horodatée avec un compteur
+par **trois canaux indépendants**, puis affiche ce qu'il relit de chacun.
+
+Ensuite : pose le widget « Diag App Group » sur l'écran d'accueil, appuie sur « Écrire
+maintenant » dans l'app, et compare.
+
+> **Le signal qui compte est la comparaison du compteur entre l'app et le widget.**
+> Le widget ne fait **que lire**, jamais écrire : s'il affiche le numéro que l'app vient
+> d'écrire, le partage inter-processus est réellement prouvé. À l'inverse,
+> `UserDefaults(suiteName:)` ne renvoie **pas** `nil` quand l'entitlement manque sur iOS —
+> il crée silencieusement un domaine isolé au processus. Ce canal peut donc afficher
+> « écriture réussie » des deux côtés alors que rien n'est partagé. Ne te fie pas à
+> l'absence d'erreur, fie-toi au compteur.
+
+### Grille de lecture des messages
+
+| Message affiché | Ce que ça veut dire |
+|---|---|
+| `Conteneur App Group introuvable (containerURL nil — entitlement perdu ?)` | **Le cas redouté.** L'entitlement App Group n'a pas survécu à la re-signature → verdict de gate négatif, on bascule sur « le widget fetch lui-même ». |
+| `Fichier absent (…) — jamais écrit ou supprimé` | Le conteneur existe mais rien n'y a encore été écrit : appuie sur « Écrire maintenant » dans l'app d'abord. **Ce n'est pas un échec de l'App Group.** |
+| `Clé absente — jamais écrite` | Idem pour le canal `UserDefaults` ; côté widget, ça signifie qu'il lit son **propre** domaine isolé → App Group probablement non partagé. |
+| `JSON illisible/corrompu` | Écriture interrompue. Réessaie une écriture ; si ça persiste, signale-le. |
+| `Entitlement Keychain manquant (errSecMissingEntitlement) — access group perdu à la re-signature` | Le partage Keychain est cassé. Non bloquant pour la v1 (les widgets n'ont pas besoin de token), mais à signaler. |
+| `Item Keychain absent (errSecItemNotFound)` | Jamais écrit — écris d'abord depuis l'app. |
+| `Accès refusé avant déverrouillage (errSecInteractionNotAllowed)` | Déverrouille l'iPhone puis réessaie ; l'item est censé être accessible après le premier déverrouillage. |
+
+### Ce que j'attends comme retour
+
+1. L'app démarre-t-elle ?
+2. Les widgets sont-ils **posables** (écran d'accueil **et** écran verrouillé) ?
+3. Le compteur affiché par le widget correspond-il à celui de l'app après « Écrire
+   maintenant » puis « Recharger les timelines » ?
+4. La ligne Keychain du widget affiche-t-elle une valeur ou une erreur ?
+5. Après une re-signature (J+7 ou forcée), les données sont-elles conservées ?
+
+Si le point 3 échoue, l'architecture bascule — c'est prévu et pré-câblé (le widget lit à
+travers une abstraction, `SnapshotSource`), donc ça ne remet pas en cause le reste du code.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Solution |

@@ -38,7 +38,7 @@ struct RootTabView: View {
         TabView {
             DashboardView()
                 .tabItem {
-                    Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent")
+                    Label("Tableau de bord", systemImage: "gauge.with.dots.needle.50percent")
                 }
 
             SettingsView()
