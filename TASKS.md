@@ -108,6 +108,12 @@
   `WidgetCenter.reloadAllTimelines()` ; refresh proactif des tokens ; bandeau
   « reconnecter ». *Accept : CI verte + validation device par Tristan (widget se met à
   jour après une session Claude Code sur le PC ; notification reçue à un reset).*
+  **Critère d'acceptation supplémentaire (dette explicite de T2.2)** : le `SingleFlight`
+  livré en T2.2 **doit être câblé** ici, une instance par provider, de sorte qu'un refresh
+  déclenché par l'app au premier plan et un refresh déclenché par la `BGAppRefreshTask` ne
+  puissent jamais partir en parallèle. Deux refresh concurrents déclenchent
+  `refresh_token_reused` côté OpenAI, qui est un échec **définitif** : l'utilisateur devrait
+  se reconnecter à cause d'une course interne à l'app.
 - 🟢 libre — **T3.2 Revue transverse** (agent n'ayant pas écrit T3.1)
   `/code-review` complet, chasse aux fuites de tokens dans les logs, erreurs réseau.
 

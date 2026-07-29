@@ -183,8 +183,18 @@ let mut query = vec![
    stocké si absent de la réponse. Idem côté Claude : `let{access_token:c,refresh_token:u=e,...}=l` — si le
    serveur ne renvoie pas de nouveau `refresh_token`, le client réutilise l'ancien (`u=e` = valeur par défaut).
 3. **Codex : gestion des échecs de refresh par code d'erreur, pas juste par statut HTTP.**
-   `manager.rs::classify_refresh_token_failure` lit `error.code` (ou `error` string, ou `error.error`) dans le
-   corps JSON et distingue trois cas définitifs (→ ne jamais retry, forcer un nouveau login) :
+   > ⚠️ **Correction du 2026-07-29 (nuit)** — la version initiale de ce paragraphe disait
+   > « `error.code`, ou `error` string, ou `error.error` ». C'était **inexact** : relecture
+   > de `manager.rs::extract_refresh_token_error_code` (l. 1407-1431) au commit `cf7e9cfe`,
+   > l'ordre réel est `error.code` → `error` (si string) → **`code` à la racine du JSON**.
+   > Il n'existe **aucun** chemin `error.error`. Et le code est **mis en minuscules**
+   > (`to_ascii_lowercase`) avant comparaison. Une implémentation qui suivrait la version
+   > initiale classerait `{"code":"refresh_token_expired"}` ou une casse différente comme
+   > erreur *transitoire* — donc retentée en boucle alors que seule une reconnexion aide.
+
+   `manager.rs::classify_refresh_token_failure` lit le code d'erreur dans le corps JSON
+   (ordre ci-dessus, comparaison en minuscules) et distingue trois cas définitifs
+   (→ ne jamais retry, forcer un nouveau login) :
    - `refresh_token_expired` → message « expiré »
    - `refresh_token_reused` → réutilisation détectée (le refresh token a déjà servi — normal si deux instances
      de l'app tentent un refresh concurrent, à éviter avec un verrou/single-flight côté `RefreshManager`)
