@@ -178,10 +178,74 @@
 
 ## Phase M4 — Finitions & release
 
-- 🟢 libre — **T4.1 Icône, dark mode, localisation FR**
-- 🟢 libre — **T4.2 README + docs/INSTALL-IPHONE.md finalisés** (captures d'écran)
-- 🟢 libre — **T4.3 Release v1.0** (tag → IPA en Release GitHub) + clôture WORKFLOW
-  (état actuel CLAUDE.md, libération projet dans `_ORCHESTRATION.md`, note vault)
+- ✅ done — **T4.1 Icône, dark mode, localisation FR** — @claude-opus — 2026-07-30
+  Icône 1024 générée (deux anneaux imbriqués, orange = Claude / turquoise = Codex, fond
+  sombre) dans `App/Assets.xcassets`. `DEVELOPMENT_LANGUAGE: fr` + `CFBundleLocalizations`
+  — sans quoi iOS afficherait les libellés système (boutons d'alerte, formats de date) en
+  anglais sur un appareil francophone. Aucune couleur en dur nulle part : le dark mode
+  fonctionne par les couleurs sémantiques SwiftUI.
+- ✅ done — **T4.2 README + docs finalisés** — @claude-opus — 2026-07-30
+  README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
+  `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
+  complète des messages de diagnostic et les 5 points de retour attendus.
+- ✅ done — **T4.3 Release v1.0** — @claude-opus — 2026-07-30
+  Tag `v1.0` → `Limits.ipa` en Release GitHub (job `release` vérifié fonctionnel) :
+  https://github.com/TristeTemps78/Limits/releases/tag/v1.0
+
+## Audit final (demandé explicitement) — ✅ fait le 2026-07-30
+
+**300 tests verts.** Ce que l'audit a cherché à contre-courant du réflexe habituel, et ce
+qu'il a produit :
+
+1. **Tests adverses par mutation** (`FixtureMutationTests`) — tous les autres tests
+   validaient les 4 fixtures **telles que capturées** : un compte, un plan, un jour. Le
+   risque n'était pas qu'ils soient faux, mais qu'ils soient **muets** sur tout le reste.
+   Ces tests abîment systématiquement les fixtures réelles (clé supprimée / à `null` / de
+   type incompatible / valeur aberrante, ~90 mutations) et vérifient l'absence de crash
+   **plus les invariants du domaine** : pourcentage fini et positif, date de reset entre
+   2020 et 2100. Ajout des cas jamais capturés : session Claude **active**, Codex avec ses
+   **deux** fenêtres (dans l'ordre inverse de l'intuition — c'est ce qui rend le piège
+   « primary = 5 h » invisible sur notre unique capture), durée de fenêtre inconnue.
+2. **`UnexpectedPayloadDetector` — le mode de défaillance silencieux du parsing tolérant.**
+   La règle 3 impose d'ignorer l'inconnu ; la contrepartie, que rien ne surveillait : si un
+   provider **renomme** ses champs, le décodage réussit et produit **zéro fenêtre**. L'app
+   affichait alors « aucune donnée » — que l'utilisateur lit comme « ma connexion est
+   cassée ». Il irait donc se reconnecter, le login réussirait, et rien ne changerait.
+   Désormais un état distinct dans l'app **et** dans le widget, avec un message qui dit
+   explicitement de **ne pas** se reconnecter et de régénérer les fixtures.
+3. **Déduplication de l'iconographie de sévérité.** La revue de T2.4 avait conclu
+   « duplication inévitable, à garder synchronisée » entre `App/Dashboard/SeverityStyle.swift`
+   et `Widgets/Gauges/SeverityStyle.swift`. Vrai pour la couleur (`SwiftUI.Color` ne peut pas
+   descendre dans `LimitsCore`), **faux pour les deux autres membres** : symbole SF et mot
+   court sont des `String`. Ils vivent maintenant dans `LimitsCore.SeverityIconography`,
+   partagés et **testés**. Ce sont précisément eux qui portent l'information quand iOS
+   écrase les couleurs sur l'écran verrouillé : les laisser dupliqués, c'était accepter que
+   la seule information survivant au verrouillage puisse diverger sans qu'aucun test ne le voie.
+4. **Tests de propriétés transverses** (`CrossSurfaceConsistencyTests`) — chaque lot avait
+   été testé et relu **isolément**, donc rien ne vérifiait ce qui n'appartient à aucun lot :
+   symboles/libellés tous distincts et non vides, arrondi de pourcentage unique, et surtout
+   **le même snapshot vide doit produire le même diagnostic dans l'app et dans le widget**.
+5. **429 de bout en bout** — `PollingPolicy` était testé seul, `RefreshStateStore` seul.
+   Le scénario qui compte enchaîne trois composants : 429 → `Retry-After` respecté →
+   backoff persisté → **redémarrage du processus** → réveil refusé → expiration → autorisé.
+   Plus : `.needsReconnect` ne se libère **jamais** par le temps seul, même en manuel.
+
+### Limites connues, assumées et non corrigées
+
+- **T3.1 et l'audit final n'ont pas été relus par un agent tiers** : la limite de dépenses
+  mensuelle du compte a coupé les sous-agents en pleine phase M3. L'orchestrateur a écrit
+  **et** relu — exactement le « rédacteur = relecteur » qu'`AGENTS.md` interdit. À relire.
+- **`reset_at` en millisecondes non détecté** : si l'API changeait d'unité, un compte à
+  rebours de 30 siècles s'afficherait sans broncher. Le comportement est *documenté par un
+  test* qui échouera le jour où ça arrive — c'est le signal qu'on veut, pas une correction.
+- **Course sur le journal des notifications** : `RefreshStateStore` fait lecture-modification-
+  écriture sur `UserDefaults` sans verrou. App et tâche de fond simultanées pourraient
+  perdre une écriture → au pire une notification en double. Auto-réparant au fetch suivant.
+- **Alias Codex** (`five_hour_limit`…) toujours couverts par des tests **synthétiques** :
+  aucune capture réelle ne les exerce.
+- **Rien n'a jamais tourné sur un iPhone.** Aucun agent n'a de Mac : la CI prouve que ça
+  compile, s'archive et que la logique est correcte. Elle ne prouve **pas** qu'un login réel
+  aboutit, que l'App Group survit à la re-signature, ni à quoi ressemble une jauge.
 
 ## Critère global « tout marche » (checklist finale)
 
