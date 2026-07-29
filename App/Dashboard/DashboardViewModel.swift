@@ -5,13 +5,19 @@ import LimitsCore
 /// AGENTS.md rule 7), refreshing tokens on 401, and persisting the shared snapshot to
 /// the App Group container for the widgets.
 ///
-/// State (`PollingState`, last snapshot, last outcome) is kept in memory only for
-/// this v1 — it resets on relaunch, which is acceptable per PLAN.md §4 ("l'ouverture
-/// de l'app force aussi un fetch"). Background refresh (`BGAppRefreshTask`,
-/// `RefreshManager.swift` in PLAN.md §4) and the single-flight coordination between
-/// foreground and background refreshes (`SingleFlight`, T2.2) are **not** built here
-/// — this view model only ever runs in the foreground, so there is no concurrent
-/// refresh to serialize yet. See the T2.4 report for what that leaves for a later lot.
+/// **T3.1** — ce view model ne fait plus lui-même les appels réseau ni les refresh de
+/// token : tout passe par `LimitsCore.UsageRefreshService`, exactement comme la
+/// `BGAppRefreshTask` (`RefreshManager`). Deux raisons, toutes deux structurantes :
+///
+/// 1. **La course sur le refresh de token.** Deux refresh concurrents avec le même
+///    `refresh_token` renvoient `refresh_token_reused` côté OpenAI, un échec *définitif*
+///    (cf. `docs/oauth-verification-2026-07-29.md`, piège 3). L'app au premier plan et la
+///    tâche de fond peuvent parfaitement partir en même temps — iOS réveille la tâche
+///    pendant que l'écran est allumé. Passer par le `TokenRefreshCoordinator` (donc par un
+///    `SingleFlight` par provider) est la seule façon de l'empêcher.
+/// 2. **La mémoire du backoff.** `PollingState` et `lastFetchAt` sont désormais persistés
+///    dans `RefreshStateStore` : sans ça, relancer l'app remettrait le compteur à zéro et
+///    contournerait le minimum de 15 minutes comme un backoff en cours après un 429.
 @MainActor
 final class DashboardViewModel: ObservableObject {
     struct ProviderRuntime {
@@ -32,11 +38,15 @@ final class DashboardViewModel: ObservableObject {
     private let policy = PollingPolicy()
     private let claudeTokenStore = TokenStore(provider: .claude)
     private let codexTokenStore = TokenStore(provider: .codex)
-    private let claudeUsageClient = ClaudeUsageClient(httpClient: URLSessionHTTPClient())
-    private let codexUsageClient = CodexUsageClient(httpClient: URLSessionHTTPClient())
+    private let service = UsageRefreshService(httpClient: URLSessionHTTPClient())
+    private let stateStore = RefreshStateStore()
     private let snapshotStore = SnapshotStore(
         containerURL: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.identifier)
     )
+    /// Seuils de notification, injectés depuis les réglages. Le premier plan programme les
+    /// mêmes notifications que la tâche de fond : un franchissement constaté pendant que
+    /// l'utilisateur regarde l'écran doit l'alerter comme un autre.
+    var notificationThresholds: [Double] = NotificationPlanner.defaultThresholds
 
     /// Re-checks stored tokens (cheap Keychain reads) — call on appear and after any
     /// connect/disconnect action, not on every render.
@@ -51,6 +61,13 @@ final class DashboardViewModel: ObservableObject {
         } else {
             codexConnected = false
         }
+        // L'état persistant fait autorité sur le backoff et le « reconnecter » : le
+        // recharger ici évite qu'un simple relancement de l'app contourne un backoff en
+        // cours (règle 7 d'AGENTS.md, anti-429).
+        claudeRuntime.pollingState = stateStore.pollingState(for: .claude)
+        claudeRuntime.lastFetchAt = stateStore.lastFetchAt(for: .claude)
+        codexRuntime.pollingState = stateStore.pollingState(for: .codex)
+        codexRuntime.lastFetchAt = stateStore.lastFetchAt(for: .codex)
     }
 
     /// Sequential, not concurrent — both calls are already throttled by
@@ -62,182 +79,97 @@ final class DashboardViewModel: ObservableObject {
         await fetchCodex(trigger: trigger)
     }
 
-    // MARK: - Claude
+    // MARK: - Fetch (un seul chemin, partagé avec la tâche de fond)
 
     func fetchClaude(trigger: PollingTrigger) async {
-        guard claudeConnected else { return }
-
-        let decision = AppRefreshGate.evaluate(
-            trigger: trigger,
-            lastFetchAt: claudeRuntime.lastFetchAt,
-            state: claudeRuntime.pollingState,
-            policy: policy,
-            now: Date()
-        )
-        guard decision == .allowed else {
-            if trigger == .manualRefresh {
-                refreshNotice = Self.noticeText(for: decision)
-            }
-            return
-        }
-
-        guard case .success(let tokens) = claudeTokenStore.load() else {
-            claudeConnected = false
-            return
-        }
-
-        let outcome = await performClaudeFetch(tokens: tokens)
-        claudeRuntime.lastFetchAt = Date()
-        claudeRuntime.lastOutcome = outcome
-        claudeRuntime.pollingState = policy.nextState(current: claudeRuntime.pollingState, outcome: outcome)
-        persistSnapshot()
+        await fetch(provider: .claude, trigger: trigger)
     }
-
-    private func performClaudeFetch(tokens: StoredTokens) async -> PollingOutcome {
-        switch await claudeUsageClient.fetchUsage(accessToken: tokens.accessToken) {
-        case .success(let snapshot):
-            claudeRuntime.lastSnapshot = snapshot
-            return .success
-        case .failure(.unauthorized):
-            return await refreshClaudeThenRetry(tokens: tokens)
-        case .failure(.rateLimited(_, let retryAfter)):
-            return .rateLimited(retryAfter: retryAfter)
-        case .failure:
-            return .otherFailure
-        }
-    }
-
-    private func refreshClaudeThenRetry(tokens: StoredTokens) async -> PollingOutcome {
-        switch await ClaudeOAuth.refresh(refreshToken: tokens.refreshToken) {
-        case .success(let response):
-            let newRefreshToken = response.resolvedRefreshToken(previous: tokens.refreshToken)
-            let newTokens = StoredTokens(
-                accessToken: response.accessToken,
-                refreshToken: newRefreshToken,
-                expiresAt: response.expiresIn.map { Date().addingTimeInterval(TimeInterval($0)) }
-            )
-            _ = claudeTokenStore.save(newTokens)
-
-            switch await claudeUsageClient.fetchUsage(accessToken: response.accessToken) {
-            case .success(let snapshot):
-                claudeRuntime.lastSnapshot = snapshot
-                return .success
-            case .failure(.rateLimited(_, let retryAfter)):
-                return .rateLimited(retryAfter: retryAfter)
-            case .failure:
-                return .otherFailure
-            }
-        case .failure(let error):
-            // ClaudeOAuthError doesn't carry an explicit "permanent vs transient"
-            // flag the way CodexOAuthError does (T2.2 didn't need one — Claude's
-            // refresh failure modes weren't verified in as much depth as Codex's
-            // three named error codes, see docs/oauth-verification-2026-07-29.md).
-            // Judgment call: treat any *HTTP* failure (the server actively rejected
-            // the refresh) as permanent, and anything transport-level (no response
-            // at all — offline, timeout) as transient. A false "transient" here just
-            // means one more retry before `.needsReconnect`, which is the safe
-            // direction to be wrong in.
-            switch error {
-            case .transport:
-                return .otherFailure
-            case .httpStatus, .decodingFailed, .invalidPastedCode, .stateMismatch:
-                return .unauthorized
-            }
-        }
-    }
-
-    // MARK: - Codex
 
     func fetchCodex(trigger: PollingTrigger) async {
-        guard codexConnected else { return }
+        await fetch(provider: .codex, trigger: trigger)
+    }
 
+    private func fetch(provider: ProviderKind, trigger: PollingTrigger) async {
+        guard isConnected(provider) else { return }
+
+        var runtime = self.runtime(for: provider)
         let decision = AppRefreshGate.evaluate(
             trigger: trigger,
-            lastFetchAt: codexRuntime.lastFetchAt,
-            state: codexRuntime.pollingState,
+            lastFetchAt: runtime.lastFetchAt,
+            state: runtime.pollingState,
             policy: policy,
             now: Date()
         )
         guard decision == .allowed else {
+            // Un rafraîchissement manuel refusé doit le dire : un pull-to-refresh qui ne
+            // fait rien en silence passe pour une app cassée.
             if trigger == .manualRefresh {
                 refreshNotice = Self.noticeText(for: decision)
             }
             return
         }
 
-        guard case .success(let tokens) = codexTokenStore.load(), let accountID = tokens.accountID else {
-            codexConnected = false
-            return
+        let result = await service.refresh(provider: provider)
+        let now = Date()
+        runtime.lastFetchAt = now
+        runtime.lastOutcome = result.outcome
+        runtime.pollingState = policy.nextState(current: runtime.pollingState, outcome: result.outcome)
+        // Un échec ne remplace jamais le dernier snapshot connu (PLAN.md §6.3) : on
+        // n'écrase que sur succès.
+        if let snapshot = result.snapshot {
+            runtime.lastSnapshot = snapshot
         }
+        setRuntime(runtime, for: provider)
+        stateStore.record(provider: provider, lastFetchAt: now, state: runtime.pollingState)
 
-        let outcome = await performCodexFetch(tokens: tokens, accountID: accountID)
-        codexRuntime.lastFetchAt = Date()
-        codexRuntime.lastOutcome = outcome
-        codexRuntime.pollingState = policy.nextState(current: codexRuntime.pollingState, outcome: outcome)
         persistSnapshot()
+        await scheduleNotifications()
     }
 
-    private func performCodexFetch(tokens: StoredTokens, accountID: String) async -> PollingOutcome {
-        switch await codexUsageClient.fetchUsage(accessToken: tokens.accessToken, accountID: accountID) {
-        case .success(let snapshot):
-            codexRuntime.lastSnapshot = snapshot
-            return .success
-        case .failure(.unauthorized):
-            return await refreshCodexThenRetry(tokens: tokens, accountID: accountID)
-        case .failure(.rateLimited(_, let retryAfter)):
-            return .rateLimited(retryAfter: retryAfter)
-        case .failure:
-            return .otherFailure
+    private func isConnected(_ provider: ProviderKind) -> Bool {
+        provider == .claude ? claudeConnected : codexConnected
+    }
+
+    private func runtime(for provider: ProviderKind) -> ProviderRuntime {
+        provider == .claude ? claudeRuntime : codexRuntime
+    }
+
+    private func setRuntime(_ runtime: ProviderRuntime, for provider: ProviderKind) {
+        switch provider {
+        case .claude: claudeRuntime = runtime
+        case .codex: codexRuntime = runtime
         }
     }
 
-    private func refreshCodexThenRetry(tokens: StoredTokens, accountID: String) async -> PollingOutcome {
-        switch await CodexOAuth.refresh(refreshToken: tokens.refreshToken) {
-        case .success(let response):
-            guard let newAccessToken = response.accessToken else {
-                // A 2xx refresh response with no access_token is a malformed-response
-                // situation, not a confirmed "reconnect required" — treat as
-                // transient rather than forcing the user to reconnect for what might
-                // be a transient server-side glitch.
-                return .otherFailure
-            }
-            let newRefreshToken = response.resolvedRefreshToken(previous: tokens.refreshToken)
-            let newTokens = StoredTokens(
-                accessToken: newAccessToken,
-                refreshToken: newRefreshToken,
-                expiresAt: nil,
-                accountID: accountID
-            )
-            _ = codexTokenStore.save(newTokens)
-
-            switch await codexUsageClient.fetchUsage(accessToken: newAccessToken, accountID: accountID) {
-            case .success(let snapshot):
-                codexRuntime.lastSnapshot = snapshot
-                return .success
-            case .failure(.rateLimited(_, let retryAfter)):
-                return .rateLimited(retryAfter: retryAfter)
-            case .failure:
-                return .otherFailure
-            }
-        case .failure(let error):
-            // Unlike Claude, Codex's refresh failures ARE classified with real
-            // confidence (verification report + T2.2 review, re-checked against
-            // codex-rs source line by line) — trust `isPermanentRefreshFailure`
-            // directly rather than guessing.
-            return error.isPermanentRefreshFailure ? .unauthorized : .otherFailure
-        }
+    /// Le premier plan programme les mêmes notifications que la tâche de fond, avec le
+    /// **même journal persistant** : c'est lui qui garantit qu'un seuil déjà annoncé ne
+    /// re-notifie pas, quel que soit le chemin qui a constaté le franchissement.
+    private func scheduleNotifications() async {
+        let snapshots = currentSharedSnapshots()
+        let plan = NotificationPlanner.plan(
+            snapshots: snapshots,
+            thresholds: notificationThresholds,
+            ledger: stateStore.notificationLedger(),
+            now: Date()
+        )
+        await LocalNotificationScheduler.apply(plan.notifications)
+        stateStore.save(ledger: plan.ledger)
     }
 
     // MARK: - Shared
 
-    private func persistSnapshot() {
-        let snapshots = SharedUsageSnapshots(
+    private func currentSharedSnapshots() -> SharedUsageSnapshots {
+        SharedUsageSnapshots(
             updatedAt: Date(),
             claude: claudeRuntime.lastSnapshot,
             codex: codexRuntime.lastSnapshot,
             claudeStatus: connectionStatus(isConnected: claudeConnected, pollingState: claudeRuntime.pollingState),
             codexStatus: connectionStatus(isConnected: codexConnected, pollingState: codexRuntime.pollingState)
         )
+    }
+
+    private func persistSnapshot() {
+        let snapshots = currentSharedSnapshots()
         switch snapshotStore.write(snapshots) {
         case .success:
             lastSnapshotWriteSucceeded = true

@@ -108,6 +108,9 @@ final class ClaudeConnectViewModel: NSObject, ObservableObject {
             pastedCode = ""
             pendingVerifier = nil
             expectedState = nil
+            // `PollingState.needsReconnect` est terminal : sans ce reset, une reconnexion
+            // reussie laisserait l'app bloquee malgre un token neuf.
+            RefreshStateStore().clear(provider: .claude)
             state = .connected
             NotificationCenter.default.post(name: .limitsProviderConnectionChanged, object: nil)
         case .failure:
@@ -117,6 +120,7 @@ final class ClaudeConnectViewModel: NSObject, ObservableObject {
 
     func disconnect() {
         _ = tokenStore.delete()
+        RefreshStateStore().clear(provider: .claude)
         state = .notConnected
         NotificationCenter.default.post(name: .limitsProviderConnectionChanged, object: nil)
     }
