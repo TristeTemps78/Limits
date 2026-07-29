@@ -90,7 +90,7 @@ struct ProviderDashboardSectionView: View {
         HStack(spacing: 6) {
             Text("à jour \(SnapshotFreshness.relativeLabel(fetchedAt: fetchedAt, now: now))")
                 .font(.caption)
-                .foregroundStyle(level == .fresh ? .secondary : .orange)
+                .foregroundStyle(level == .fresh ? Color.secondary : Color.orange)
             if let bannerMessage = level.widgetBannerMessage {
                 Text("· \(bannerMessage)")
                     .font(.caption)
