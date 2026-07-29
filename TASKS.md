@@ -100,7 +100,26 @@
   `code#state` collé (un espace ramené par le copier-coller faisait échouer le login avec
   un message incompréhensible), et 17 tests traversant réellement `exchange`/`refresh`.
   Dette reportée en critère d'acceptation de **T3.1** : câblage du `SingleFlight`.
-- 🔒 in-progress — **T2.3 Widgets** — @sonnet-c — 2026-07-29
+- ✅ done — **T2.3 Widgets** — @sonnet-c, relu @sonnet-a — 2026-07-29
+  6 familles, jauges anneau/barre, `TimelineProvider` lisant **uniquement** `SnapshotSource`.
+  Toute la logique (sévérité, urgence, fraîcheur, planification de timeline, vocabulaire FR,
+  `SampleSnapshots` aux valeurs des fixtures) est dans `LimitsCore` et testée ; les vues ne
+  contiennent aucune comparaison de date ni seuil (vérifié par grep en revue).
+  Décisions à connaître avant de toucher aux widgets :
+  - **Compte à rebours > 24 h → `Text(date, style: .relative)`** (« dans 6 j »), ≤ 24 h →
+    `Text(timerInterval:)`. Les deux sont rafraîchis **nativement** par le système : le choix
+    ne coûte rien en budget de timeline, il n'y a donc pas d'arbitrage précision/coût.
+  - **Timeline** : une entrée à `now`, une par `resetsAt` à venir (max 4), repli à 1 h.
+    Jamais d'intervalle fixe serré — iOS coupe silencieusement un widget trop gourmand, ce
+    qui ressemble exactement au bug qu'on veut éviter.
+  - **Familles `accessory*`** : iOS écrase les couleurs (rendu `accented`/`vibrant`) → la
+    sévérité porte **aussi** un symbole SF et un mot court, sinon l'information disparaît.
+  - **`Double.roundedPercentText`** (`LimitsCore`) est la **seule** règle d'arrondi des
+    pourcentages, partagée app + widget (elle était dupliquée 3× avant la revue).
+  - `SharedUsageSnapshots` a gagné `claudeStatus`/`codexStatus` de façon **additive**
+    (optionnels, défaut `nil`) : un ancien JSON décode toujours, d'où l'absence de bump de
+    `schemaVersion` — bumper aurait fait rejeter par un vieux widget un fichier lisible.
+  - Le widget de diagnostic de T1.1 est **conservé** dans le bundle (instrument du gate M1).
   `RingGauge`/`BarGauge`, familles systemSmall/Medium/Large + accessoryCircular/
   Rectangular/Inline, TimelineProvider sur snapshot, placeholders (non connecté, données
   périmées, reconnecter), comptes à rebours `Text(timerInterval:)`. *Accept : compile en
