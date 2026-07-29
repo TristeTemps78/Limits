@@ -10,22 +10,34 @@
 - ✅ done — **T0.1 Repo GitHub public + remote** — @claude-opus — 2026-07-29
   https://github.com/TristeTemps78/Limits (public, `main`, remote `origin`). Fixtures
   vérifiées anonymisées avant publication (aucun secret dans l'historique).
-- 🔒 in-progress — **T0.2 Scaffold XcodeGen 3 targets** — @sonnet-a — 2026-07-29
-  `project.yml` : app iOS 17+ `com.caldf.limitsapp`, extension WidgetKit, package
-  `LimitsCore` (squelettes compilables minimaux). *Accept : `xcodegen generate` +
-  `xcodebuild archive` passent en CI.* *Relecteur : Sonnet B.*
-- 🔒 in-progress — **T0.3 CI build.yml** — @sonnet-a — 2026-07-29
-  Workflow §5.1 de PLAN.md : job test (swift test LimitsCore) + job ipa (archive non
-  signée → artefact `Limits.ipa`) + Release sur tag. *Accept : artefact téléchargeable
-  sur un push.* *Relecteur : Sonnet B. Livré avec T0.2 (même lot : l'accept de T0.2
-  exige la CI).*
+- ✅ done — **T0.2 Scaffold XcodeGen 3 targets** — @sonnet-a, relu @sonnet-b (GO) — 2026-07-29
+  `project.yml` : app `com.caldf.limitsapp` (iOS 17), extension WidgetKit
+  `com.caldf.limitsapp.widgets` embarquée (`embed: true, codeSign: false`), package local
+  `LimitsCore` (iOS 17 + **macOS 13** — le support macOS force l'absence d'UI dans le
+  package, vérifié gratuitement par `swift test`). Entitlements App Group
+  `group.com.caldf.limitsapp` + `keychain-access-groups` déclarés **identiques** sur les
+  deux targets (Sideloadly les remappe à la re-signature — sans eux T1.2 ne prouverait rien).
+  `LimitsCore/Tests/.../FixtureLoader.swift` remonte depuis `#filePath` jusqu'à `fixtures/`
+  (pas de symlink : dev Windows) — base des tests de M2.
+- ✅ done — **T0.3 CI build.yml** — @sonnet-a, relu @sonnet-b (GO) — 2026-07-29
+  Jobs `test` (`swift test --package-path LimitsCore`) + `ipa` (xcodegen → archive non
+  signée → artefact `Limits-ipa`) + `release` sur tag `v*` (`gh release create`, aucune
+  action tierce). Xcode **16.2** épinglé explicitement sur `macos-15`. Garde-fou : le job
+  échoue si `Payload/Limits.app/PlugIns/LimitsWidgets.appex` est absent (échec silencieux
+  classique = IPA valide mais aucun widget installable).
+  CI verte sur `main` : run 30445925341 (`test` ✅ + `ipa` ✅).
+  *Note : `on: push` reste volontairement sans filtre de branche — c'est ce qui permet à
+  chaque agent de prouver son lot sur sa propre branche avant merge.*
 
 ## Phase M1 — Dérisquage **[GATE : ne pas lancer M2 sans verdict]**
 
-- 🟢 libre — **T1.1 App+widget « hello » avec App Group** (Sonnet)
+- 🔒 in-progress — **T1.1 App+widget « hello » avec App Group** — @sonnet-b — 2026-07-29
   L'app écrit une valeur horodatée dans le conteneur App Group + Keychain (access group
   partagé) ; le widget (systemSmall + accessoryRectangular) l'affiche. *Accept : CI
-  verte, IPA artefact.*
+  verte, IPA artefact.* *Relecteur : Sonnet A.*
+  Objectif = **diagnostic**, pas esthétique : les 3 canaux (UserDefaults suite, fichier
+  du conteneur App Group, Keychain access group) sont testés séparément et le widget
+  affiche la **cause** de l'échec, pour que le verdict T1.4 soit précis.
 - 🟢 libre — **T1.2 Test humain sideload** (Tristan, ~20 min)
   Suivre `docs/INSTALL-IPHONE.md` : installer Sideloadly, sideloader l'IPA T1.1.
   *Vérifier : app démarre ; widget posable (home + lock) ; le widget lit bien la valeur
