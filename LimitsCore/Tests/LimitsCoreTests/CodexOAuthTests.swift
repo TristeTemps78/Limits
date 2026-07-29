@@ -132,10 +132,42 @@ final class CodexOAuthTests: XCTestCase {
     }
 
     func testClassifyRefreshTokenInvalidatedAsPermanentKnownReason() {
-        let body = Data(#"{"error":{"error":"refresh_token_invalidated"}}"#.utf8)
+        let body = Data(#"{"error":{"code":"refresh_token_invalidated"}}"#.utf8)
         XCTAssertEqual(
             CodexRefreshFailureClassifier.classify(statusCode: 400, body: body),
             .permanentKnownReason(.invalidated)
+        )
+    }
+
+    /// `manager.rs::extract_refresh_token_error_code` also checks a bare `code` at
+    /// the JSON root (no `error` wrapper) — re-verified against the upstream source
+    /// during T2.2 review.
+    func testClassifyRootLevelCodeWithNoErrorWrapperAsPermanentKnownReason() {
+        let body = Data(#"{"code":"refresh_token_expired"}"#.utf8)
+        XCTAssertEqual(
+            CodexRefreshFailureClassifier.classify(statusCode: 400, body: body),
+            .permanentKnownReason(.expired)
+        )
+    }
+
+    /// Upstream lowercases the extracted code (`to_ascii_lowercase`) before
+    /// comparing — a differently-cased body must still classify correctly.
+    func testClassifyIsCaseInsensitive() {
+        let body = Data(#"{"error":{"code":"REFRESH_TOKEN_REUSED"}}"#.utf8)
+        XCTAssertEqual(
+            CodexRefreshFailureClassifier.classify(statusCode: 400, body: body),
+            .permanentKnownReason(.reused)
+        )
+    }
+
+    /// The shape our own verification report originally (incorrectly) described —
+    /// `error.error` — does not exist upstream and must NOT be treated as a known
+    /// reason; it should fall through to the generic classification for its status.
+    func testClassifyErrorDotErrorShapeIsNotRecognized() {
+        let body = Data(#"{"error":{"error":"refresh_token_invalidated"}}"#.utf8)
+        XCTAssertEqual(
+            CodexRefreshFailureClassifier.classify(statusCode: 429, body: body),
+            .transient
         )
     }
 

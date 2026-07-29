@@ -52,12 +52,20 @@ public enum ClaudeOAuth {
     /// — including its behavior of rejecting an empty code or empty state half with
     /// the same fixed, non-specific error. Extra `#` characters (if any) end up as
     /// part of `state`, exactly like the official client.
+    ///
+    /// Leading/trailing whitespace and newlines are trimmed from the whole pasted
+    /// string **before** splitting — this is a paste from a web page, so a stray
+    /// space or trailing newline around the copied text is the common case, not the
+    /// rare one. Without this, a perfectly valid copy would fail `state` verification
+    /// downstream with a `\n` silently embedded in it, and read to the user as "the
+    /// app is broken" rather than "you copied whitespace."
     public static func parsePastedCode(_ pasted: String) -> Result<PastedCode, ClaudeOAuthError> {
-        guard let hashIndex = pasted.firstIndex(of: "#") else {
+        let trimmed = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let hashIndex = trimmed.firstIndex(of: "#") else {
             return .failure(.invalidPastedCode)
         }
-        let code = String(pasted[pasted.startIndex..<hashIndex])
-        let state = String(pasted[pasted.index(after: hashIndex)...])
+        let code = String(trimmed[trimmed.startIndex..<hashIndex])
+        let state = String(trimmed[trimmed.index(after: hashIndex)...])
         guard !code.isEmpty, !state.isEmpty else {
             return .failure(.invalidPastedCode)
         }

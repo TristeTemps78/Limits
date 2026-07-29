@@ -226,12 +226,19 @@ public enum RefreshFailureKind: Equatable {
 }
 
 public enum CodexRefreshFailureClassifier {
-    /// Reads `error.code` / `error` (string) / `error.error` from the response body —
-    /// `codex-rs` itself checks all three shapes — and maps the three known codes to
-    /// `.permanentKnownReason`. A bare 401 without any of those falls back to
-    /// `.permanentUnauthorized`; every other status is `.transient`.
+    /// Matches `codex-rs/login/src/auth/manager.rs::extract_refresh_token_error_code`
+    /// (l. 1407-1431, commit `cf7e9cfe`) exactly, re-verified line-by-line against
+    /// that source during T2.2 review — **not** the shape our own verification
+    /// report originally described (it mentioned an `error.error` path that doesn't
+    /// exist upstream; that report has since been corrected). In order:
+    /// 1. `error.code` (nested object) — the primary shape.
+    /// 2. `error` itself, if it's a bare string.
+    /// 3. `code` at the JSON **root** (no `error` wrapper at all).
+    /// The extracted code is lowercased before comparison
+    /// (`to_ascii_lowercase` upstream) — a body like `"REFRESH_TOKEN_REUSED"` must
+    /// still classify as permanent.
     public static func classify(statusCode: Int, body: Data) -> RefreshFailureKind {
-        if let code = errorCode(fromBody: body), let reason = CodexRefreshFailureReason(rawValue: code) {
+        if let code = errorCode(fromBody: body), let reason = CodexRefreshFailureReason(rawValue: code.lowercased()) {
             return .permanentKnownReason(reason)
         }
         if statusCode == 401 {
@@ -241,16 +248,19 @@ public enum CodexRefreshFailureClassifier {
     }
 
     private static func errorCode(fromBody body: Data) -> String? {
-        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-              let error = json["error"] else {
+        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
             return nil
         }
-        if let code = error as? String {
-            return code
+        if let error = json["error"] {
+            if let nested = error as? [String: Any], let code = nested["code"] as? String {
+                return code
+            }
+            if let code = error as? String {
+                return code
+            }
         }
-        if let nested = error as? [String: Any] {
-            if let code = nested["code"] as? String { return code }
-            if let code = nested["error"] as? String { return code }
+        if let code = json["code"] as? String {
+            return code
         }
         return nil
     }

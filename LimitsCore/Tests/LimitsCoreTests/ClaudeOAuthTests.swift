@@ -47,6 +47,45 @@ final class ClaudeOAuthTests: XCTestCase {
         XCTAssertEqual(ClaudeOAuth.parsePastedCode(""), .failure(.invalidPastedCode))
     }
 
+    func testParsePastedCodeFailsOnWhitespaceOnlyString() {
+        XCTAssertEqual(ClaudeOAuth.parsePastedCode("   \n\t  "), .failure(.invalidPastedCode))
+    }
+
+    // MARK: - Pasted code parsing — whitespace trimming (real-world copy/paste)
+
+    func testParsePastedCodeTrimsLeadingWhitespace() throws {
+        let result = ClaudeOAuth.parsePastedCode("   abc123#the-state-value")
+        switch result {
+        case .success(let parsed):
+            XCTAssertEqual(parsed.code, "abc123")
+            XCTAssertEqual(parsed.state, "the-state-value")
+        case .failure(let error):
+            XCTFail("expected success, got \(error)")
+        }
+    }
+
+    func testParsePastedCodeTrimsTrailingNewline() throws {
+        let result = ClaudeOAuth.parsePastedCode("abc123#the-state-value\n")
+        switch result {
+        case .success(let parsed):
+            XCTAssertEqual(parsed.code, "abc123")
+            XCTAssertEqual(parsed.state, "the-state-value")
+        case .failure(let error):
+            XCTFail("expected success, got \(error)")
+        }
+    }
+
+    func testParsePastedCodeTrimsWhitespaceOnBothSides() throws {
+        let result = ClaudeOAuth.parsePastedCode("  \n abc123#the-state-value \t\n")
+        switch result {
+        case .success(let parsed):
+            XCTAssertEqual(parsed.code, "abc123")
+            XCTAssertEqual(parsed.state, "the-state-value")
+        case .failure(let error):
+            XCTFail("expected success, got \(error)")
+        }
+    }
+
     // MARK: - Authorize URL
 
     func testAuthorizeURLUsesClaudeComCaiHost() {
