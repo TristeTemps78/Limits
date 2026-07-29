@@ -33,6 +33,13 @@ enum FlexibleISO8601 {
            let date = withFractionalSeconds.date(from: normalized) {
             return date
         }
+        // Covers both: a string that never had fractional seconds to begin with (no
+        // "." at all — `strippingFractionalSeconds` would find nothing to strip and
+        // bail early), and a defensive fallback in case the fractional-aware
+        // formatter rejects the input for some other reason.
+        if let date = withoutFractionalSeconds.date(from: string) {
+            return date
+        }
         if let stripped = strippingFractionalSeconds(string),
            let date = withoutFractionalSeconds.date(from: stripped) {
             return date
