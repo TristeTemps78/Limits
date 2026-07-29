@@ -202,16 +202,37 @@ public struct SharedUsageSnapshots: Codable, Equatable, Sendable {
     public let updatedAt: Date
     public let claude: UsageSnapshot?
     public let codex: UsageSnapshot?
+    /// Last known connection status per provider, independent of whether a snapshot
+    /// exists — e.g. `.needsReconnect` alongside a still-present (now stale) `claude`
+    /// snapshot from before the token died, which is exactly the case where PLAN.md
+    /// §6's "always keep the last snapshot visible" and T2.3's "reconnect" banner both
+    /// apply at once (see `WidgetContentState`).
+    ///
+    /// Additive and optional on purpose: nothing writes this field yet (that's T3.1's
+    /// background-refresh loop, which will set it from `PollingPolicy.PollingState`).
+    /// `nil` means "not yet reported" — by an older writer, or because T3.1 hasn't run
+    /// — and must never be silently treated as `.connected`. A `SharedUsageSnapshots`
+    /// JSON written before this field existed still decodes cleanly: Swift's
+    /// synthesized `Decodable` treats a missing key on an `Optional` stored property
+    /// as `nil` rather than throwing, so no `schemaVersion` bump was needed for this
+    /// change (see `SharedUsageSnapshotsCompatibilityTests`).
+    public let claudeStatus: ProviderConnectionStatus?
+    /// See `claudeStatus`.
+    public let codexStatus: ProviderConnectionStatus?
 
     public init(
         updatedAt: Date,
         claude: UsageSnapshot?,
         codex: UsageSnapshot?,
+        claudeStatus: ProviderConnectionStatus? = nil,
+        codexStatus: ProviderConnectionStatus? = nil,
         schemaVersion: Int = SharedUsageSnapshots.currentSchemaVersion
     ) {
         self.schemaVersion = schemaVersion
         self.updatedAt = updatedAt
         self.claude = claude
         self.codex = codex
+        self.claudeStatus = claudeStatus
+        self.codexStatus = codexStatus
     }
 }
