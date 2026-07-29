@@ -124,7 +124,16 @@
   Rectangular/Inline, TimelineProvider sur snapshot, placeholders (non connecté, données
   périmées, reconnecter), comptes à rebours `Text(timerInterval:)`. *Accept : compile en
   CI ; previews alimentées par les fixtures.* *Relecteur : Sonnet D.*
-- 🔒 in-progress — **T2.4 App UI** — @sonnet-b — 2026-07-29
+- ✅ done — **T2.4 App UI** — @sonnet-b, relu @claude-opus — 2026-07-29
+  Onboarding par provider, dashboard, réglages. Écran de diagnostic T1.1 **conservé** dans
+  les réglages (le gate M1 n'est pas passé : c'est l'IPA finale que Tristan sideloadera).
+  Réutilise la logique de T2.3 (`SnapshotFreshness`, `WindowSeverity`, `WindowPresentation`,
+  `WidgetCopy`, `roundedPercentText`) au lieu de la réécrire. CI verte : run 30453307282.
+  Bug trouvé en revue et corrigé : `LocalCallbackServer.stop()` déclenchait l'état
+  `.cancelled` du listener, interprété comme « le bind a échoué, essaie le port suivant » —
+  une annulation par l'utilisateur ouvrait donc un listener sur :1457 (fuite) puis affichait
+  « port local indisponible ». Le message trompeur que la revue de T2.2 voulait éviter,
+  réintroduit par un autre chemin.
   Onboarding/connexion par provider (champ code-paste Claude, bouton login Codex),
   dashboard (anneaux/barres, crédits Codex, « à jour il y a X min »), réglages (comptes,
   seuils, intervalle, style). *Accept : compile en CI ; états loading/erreur/vide
@@ -132,17 +141,38 @@
 
 ## Phase M3 — Intégration (1 Sonnet + Opus, séquentiel)
 
-- 🟢 libre — **T3.1 Fil complet arrière-plan**
-  BGAppRefreshTask → fetch → snapshot → notifications locales (resets + seuils) →
-  `WidgetCenter.reloadAllTimelines()` ; refresh proactif des tokens ; bandeau
-  « reconnecter ». *Accept : CI verte + validation device par Tristan (widget se met à
-  jour après une session Claude Code sur le PC ; notification reçue à un reset).*
-  **Critère d'acceptation supplémentaire (dette explicite de T2.2)** : le `SingleFlight`
-  livré en T2.2 **doit être câblé** ici, une instance par provider, de sorte qu'un refresh
-  déclenché par l'app au premier plan et un refresh déclenché par la `BGAppRefreshTask` ne
-  puissent jamais partir en parallèle. Deux refresh concurrents déclenchent
-  `refresh_token_reused` côté OpenAI, qui est un échec **définitif** : l'utilisateur devrait
-  se reconnecter à cause d'une course interne à l'app.
+- ✅ done — **T3.1 Fil complet arrière-plan** — @claude-opus — 2026-07-30
+  `BGAppRefreshTask` → fetch → snapshot App Group → notifications locales →
+  `WidgetCenter.reloadAllTimelines()`. CI verte : run 30492938071 (**277 tests**).
+  ⚠️ Écrit par l'orchestrateur, **non relu par un agent tiers** : la limite de dépenses
+  mensuelle du compte a coupé les sous-agents en pleine phase M3. À relire en priorité —
+  voir T3.2.
+  Ce que chaque pièce règle :
+  - **`TokenRefreshCoordinator`** : dette de T2.2 payée. Le `SingleFlight` est câblé **et le
+    premier plan passe par le même chemin que la tâche de fond** — sans quoi le câblage
+    n'aurait rien servi, la course étant entre l'app et la tâche, pas entre deux appels de
+    la tâche. `DashboardViewModel` ne fait plus aucun refresh lui-même.
+  - **`RefreshStateStore`** : `lastFetchAt` + `PollingState` + journal des notifications
+    persistés dans les `UserDefaults` du groupe d'app. Une tâche de fond est réveillée dans
+    un processus potentiellement relancé : sans mémoire, chaque réveil contournait le
+    minimum de 15 min et **oubliait un backoff en cours après un 429**.
+  - **`NotificationPlanner`** (logique pure, testée) : le journal oublie les seuils notifiés
+    **quand la fenêtre se réinitialise** (son identité est sa date de reset). Sans cet
+    oubli, plus aucune alerte après le premier cycle ; sans journal du tout, le même 80 %
+    re-notifierait tous les quarts d'heure. Un saut de 40 % à 96 % envoie **une** alerte
+    « 95 % », pas deux.
+  - **`BackgroundRefresh`** replanifie **avant** de travailler : une `BGAppRefreshTask` est à
+    usage unique, l'oublier arrête définitivement les rafraîchissements (panne silencieuse).
+  - **`UsageRefreshService`** : un seul chemin de fetch. Corrigé pendant l'implémentation —
+    un token Codex sans `account_id` partait en 401 → refresh → (le refresh ne renvoie
+    jamais d'`account_id`) → retry infini. Détecté avant tout appel réseau désormais.
+  - `Info.plist` : `BGTaskSchedulerPermittedIdentifiers` + `UIBackgroundModes: fetch`, à
+    garder synchronisés avec `BackgroundRefresh.taskIdentifier`.
+  - Reconnexion : `RefreshStateStore.clear(provider:)` est appelé après un login réussi et
+    après une déconnexion — `.needsReconnect` étant terminal, l'oublier laisserait l'app
+    bloquée malgré un token neuf.
+  *Reste à valider sur device par Tristan : déclenchement réel de la `BGAppRefreshTask`,
+  réception d'une notification à un reset, mise à jour du widget après une session sur le PC.*
 - 🟢 libre — **T3.2 Revue transverse** (agent n'ayant pas écrit T3.1)
   `/code-review` complet, chasse aux fuites de tokens dans les logs, erreurs réseau.
 
