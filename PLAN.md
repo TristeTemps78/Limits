@@ -109,14 +109,25 @@ User-Agent: <libre>
 
 ### 3.1 Claude — PKCE + « code à coller » (pas de serveur local nécessaire)
 
+> ⚠️ **Valeurs corrigées le 2026-07-29 (nuit)** après vérification contre le binaire
+> `claude.exe` **2.1.220 réellement installé** sur le PC (extraction de chaînes, lecture
+> seule, aucun appel réseau). Les valeurs initiales de cette section, issues de la
+> recherche du matin, étaient **périmées sur 4 points** — le login aurait échoué.
+
 | Paramètre | Valeur |
 |---|---|
-| `client_id` | `9d1c250a-e61b-44d9-88ed-5944d1962f5e` (public, celui de Claude Code) |
-| Authorize | `https://claude.ai/oauth/authorize` |
-| `redirect_uri` | `https://console.anthropic.com/oauth/code/callback` |
-| Scopes | `org:create_api_key user:profile user:inference` |
-| PKCE | S256 (`code_verifier` 43-128 chars, challenge = base64url(sha256)) |
-| Token | `POST https://console.anthropic.com/v1/oauth/token` (JSON) |
+| `client_id` | `9d1c250a-e61b-44d9-88ed-5944d1962f5e` (public, celui de Claude Code) — ✅ inchangé |
+| Authorize | `https://claude.com/cai/oauth/authorize` ⚠️ **corrigé** (ce n'est plus `claude.ai`) |
+| `redirect_uri` | `https://platform.claude.com/oauth/code/callback` ⚠️ **corrigé** (plus `console.anthropic.com`) |
+| Scopes | `org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload` ⚠️ **corrigé** (6, pas 3) |
+| Query supplémentaire | `code=true` ⚠️ **ajouté** — envoyé par 100 % des flows du client officiel |
+| PKCE | S256 (`code_verifier` 43-128 chars, challenge = base64url(sha256)) — ✅ inchangé |
+| Token | `POST https://platform.claude.com/v1/oauth/token` (JSON) ⚠️ **corrigé** |
+
+⚠️ **Piège de copier-coller** : `https://platform.claude.com/oauth/authorize` existe aussi
+(`CONSOLE_AUTHORIZE_URL`) et ressemble à la bonne URL — c'est le flow **Console/org**. Le
+compte perso Pro/Max passe par `claude.com/cai/oauth/authorize` (`loginWithClaudeAi`, vrai
+par défaut dans le client).
 
 Flow dans l'app :
 1. Générer verifier/challenge/state ; ouvrir l'URL authorize dans
@@ -125,9 +136,16 @@ Flow dans l'app :
    l'utilisateur copie et colle dans un champ de l'app.
 3. Parser `code#state`, vérifier le state, échanger :
    `{grant_type: "authorization_code", code, state, client_id, redirect_uri, code_verifier}`.
-4. Réponse : `access_token`, `refresh_token`, `expires_in` → Keychain.
-5. Refresh : `{grant_type: "refresh_token", refresh_token, client_id}` sur le même
+4. Réponse : `access_token`, `refresh_token`, `expires_in` → Keychain. Le champ
+   `refresh_token_expires_in` est lu par le client officiel quand il est présent : s'en
+   servir pour planifier le refresh proactif, avec un repli si absent.
+5. Refresh : `{grant_type: "refresh_token", refresh_token, client_id, scope}` sur le même
    endpoint token, à faire **proactivement** avant expiration.
+   ⚠️ Le `scope` du refresh **diffère de celui du login** : `user:profile user:inference
+   user:sessions:claude_code user:mcp_servers user:file_upload` — **sans**
+   `org:create_api_key`.
+   ⚠️ Si la réponse ne contient **pas** de nouveau `refresh_token`, conserver l'ancien
+   (la rotation n'est pas systématique) — l'écraser avec `nil` déconnecterait l'utilisateur.
 
 Références d'implémentation : [querymt/anthropic-auth](https://github.com/querymt/anthropic-auth)
 (Rust), [hequ/cc — oauthHelper.js](https://huggingface.co/spaces/hequ/cc/blob/main/src/utils/oauthHelper.js).
@@ -139,13 +157,21 @@ communautaires — mais c'est une zone grise assumée qui peut casser un jour.
 
 ### 3.2 Codex — PKCE + serveur local sur le port 1455
 
+> ⚠️ **Vérifié le 2026-07-29 (nuit)** contre le source `openai/codex` (commit `cf7e9cfe`,
+> 2026-07-28) : `codex-rs/login/src/{server.rs,pkce.rs,auth/manager.rs}`.
+
 | Paramètre | Valeur |
 |---|---|
-| `client_id` | `app_EMoamEEZ73f0CkXaXp7hrann` (public, celui du CLI, non configurable) |
-| Authorize | `https://auth.openai.com/oauth/authorize` |
-| `redirect_uri` | `http://localhost:1455/auth/callback` (**hard-codé** côté OpenAI) |
-| Scopes | `openid profile email offline_access` |
-| Token / refresh | `POST https://auth.openai.com/oauth/token` |
+| `client_id` | `app_EMoamEEZ73f0CkXaXp7hrann` (public, celui du CLI, non configurable) — ✅ |
+| Authorize | `https://auth.openai.com/oauth/authorize` — ✅ |
+| `redirect_uri` | `http://localhost:1455/auth/callback` (**hard-codé** côté OpenAI) ; le CLI retombe sur `:1457` si le port est pris |
+| Scopes | `openid profile email offline_access api.connectors.read api.connectors.invoke` ⚠️ **corrigé** (2 de plus) |
+| Query authorize | `response_type=code`, `client_id`, `redirect_uri`, `scope`, `code_challenge`, `code_challenge_method=S256`, `id_token_add_organizations=true`, `codex_cli_simplified_flow=true`, `state`, `originator=codex_cli_rs` |
+| Token / refresh | `POST https://auth.openai.com/oauth/token` — ✅ |
+
+⚠️ **`Content-Type` non uniforme, ne pas factoriser à l'aveugle** : l'exchange initial Codex
+est en `application/x-www-form-urlencoded`, son refresh en `application/json` — et Claude
+est en JSON pour les deux.
 
 Flow dans l'app :
 1. Démarrer un **mini serveur HTTP** sur `localhost:1455` (Network.framework
@@ -157,16 +183,28 @@ Flow dans l'app :
    `https://api.openai.com/auth` → `chatgpt_account_id` de l'`id_token` (JWT), comme le
    fait le CLI (cf. structure de `~/.codex/auth.json` dans les fixtures).
 4. Refresh JSON : `{client_id, grant_type: "refresh_token", refresh_token}`.
-   ⚠️ Les refresh tokens expirent après ~14-30 j d'inactivité → refresh proactif en
-   tâche de fond ; si perdu, notification locale « reconnecte Codex ».
+   ⚠️ Les refresh tokens expirent après une période d'inactivité (**~14-30 j : chiffre
+   *unverified*, aucune constante dans le source — ne rien coder qui en dépende**) →
+   refresh proactif en tâche de fond ; si perdu, notification locale « reconnecte Codex ».
+   ⚠️ **Classer l'échec de refresh par code d'erreur du corps JSON, pas par statut HTTP** :
+   `refresh_token_expired`, `refresh_token_reused`, `refresh_token_invalidated` sont
+   **définitifs** (→ « reconnecter », jamais de retry) ; le reste est transitoire (backoff).
+   `refresh_token_reused` se déclenche notamment sur deux refresh **concurrents** → sérialiser
+   les refresh (single-flight) entre l'app et la tâche de fond.
+   ⚠️ Réponse à champs optionnels : si `refresh_token` est absent, garder l'ancien.
+
+**À ne pas répliquer** : `codex-rs` fait un 3ᵉ appel après l'exchange (`obtain_api_key`,
+token-exchange RFC 8693) pour obtenir une clé d'API. Limits n'en a pas besoin — il ne lit
+l'endpoint usage qu'avec `access_token` + `account_id`.
 
 Références : [7shi/codex-oauth](https://github.com/7shi/codex-oauth), crate
 [codex-oauth](https://lib.rs/crates/codex-oauth), `codex-rs/login` dans openai/codex,
 [issue #8112](https://github.com/openai/codex/issues/8112).
 
-**Vérification obligatoire en début d'implémentation** : relire le flow actuel dans le
-source de `codex-rs` (paramètres d'authorize exacts) et de Claude Code — ces valeurs
-datent de la recherche du 2026-07-29.
+**Vérification faite le 2026-07-29 (nuit)** : rapport complet valeur par valeur, avec
+sources (fichier + commit) et statut ✅/⚠️/❓, dans `docs/oauth-verification-2026-07-29.md`.
+Les valeurs des tableaux ci-dessus y sont corrigées. À **refaire** avant toute reprise
+lointaine du projet : ces valeurs bougent (4 divergences en une seule journée d'écart).
 
 ---
 
