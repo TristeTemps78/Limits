@@ -75,27 +75,37 @@
 
 ## Phase M2 — Cœur (parallèle, worktrees `agent/<sonnet-X>/<tâche>`)
 
-- 🔒 in-progress — **T2.1 LimitsCore : modèles + clients usage** — @sonnet-a — 2026-07-29
-  (*à livrer en premier, débloque T2.3/T2.4*)
-  `Models`, `ClaudeUsageClient`, `CodexUsageClient` (parsing tolérant multi-alias piloté
-  par `fixtures/`), `PollingPolicy` (§6 PLAN.md), `SnapshotStore`. Points durs vérifiés
-  sur fixtures : Claude → privilégier `limits[]`, pourcents 0-100, `resets_at` null si
-  fenêtre inactive ; Codex → classifier les fenêtres par `limit_window_seconds` (jamais
-  par position primary/secondary), `secondary_window` peut être null. *Accept : tests
-  unitaires couvrant chaque fixture + cas 429/401/clé inconnue ; CI verte.*
-  *Relecteur : Sonnet B.*
-- 🔒 in-progress — **T2.2 OAuth Claude + Codex** — @sonnet-b — 2026-07-29
-  `ClaudeOAuth` (PKCE, parse `code#state`, exchange, refresh), `CodexOAuth` (PKCE,
-  refresh, account_id depuis JWT), `KeychainStore`, `LocalCallbackServer` (:1455).
-  **Commencer par re-vérifier les flows dans les sources de claude-code / codex-rs**
-  (§3 PLAN.md). *Accept : tests unitaires PKCE/parsing/état ; CI verte ; revue de la
-  gestion d'erreurs.* *Relecteur : Sonnet A.*
-- 🟢 libre — **T2.3 Widgets** (Sonnet C — après T2.1)
+- ✅ done — **T2.1 LimitsCore : modèles + clients usage** — @sonnet-a, relu @sonnet-c — 2026-07-29
+  `ProviderConfig`, `Models`, `FlexibleISO8601`, `HTTPClient` (injectable), les deux clients,
+  `PollingPolicy`, `SnapshotStore`, `SnapshotSource`. CI verte : run 30449290389.
+  Vérifications faites par le relecteur en recalculant depuis les fixtures :
+  - Claude : `limits[]` bien prioritaire, `session` 0 % inactive, `weekly_all` 8 %,
+    `extra_usage`/`spend` fusionnés, tout en 0-100 sans conversion parasite.
+  - Codex : la fenêtre de 604 800 s est classée hebdo **par sa durée** ; `secondary_window`
+    nul n'invente aucune fenêtre.
+  - `FlexibleISO8601` : bug trouvé et corrigé par l'auteur (dates **sans** fraction de
+    seconde non parsées — c'est le format du chemin de repli Claude). Un échec de parsing
+    rend `nil`, **jamais** une date par défaut qui afficherait un faux compte à rebours.
+  - Réserves acceptées : les alias Codex (`five_hour_limit`…) ne sont couverts que par des
+    tests **synthétiques** (aucune fixture ne les exerce) — documenté comme tel dans le code.
+- ✅ done — **T2.2 OAuth Claude + Codex** — @sonnet-b, relu @sonnet-a — 2026-07-29
+  PKCE, état, transports séparés par provider, `TokenStore`, `LocalCallbackServer` (:1455
+  avec repli :1457, écoute loopback). CI verte : run 30450563211 (110 tests).
+  **Toutes les constantes ont été re-vérifiées par le relecteur contre le source amont**
+  (re-téléchargé au commit `cf7e9cfe`), pas seulement contre notre rapport interne — et
+  c'est ce qui a permis de trouver que **notre propre rapport était faux** sur la
+  classification des erreurs de refresh Codex (cf. correctif dans
+  `docs/oauth-verification-2026-07-29.md`).
+  Corrigé en revue : casse + chemin `code` racine du classifieur d'erreurs, trim du
+  `code#state` collé (un espace ramené par le copier-coller faisait échouer le login avec
+  un message incompréhensible), et 17 tests traversant réellement `exchange`/`refresh`.
+  Dette reportée en critère d'acceptation de **T3.1** : câblage du `SingleFlight`.
+- 🔒 in-progress — **T2.3 Widgets** — @sonnet-c — 2026-07-29
   `RingGauge`/`BarGauge`, familles systemSmall/Medium/Large + accessoryCircular/
   Rectangular/Inline, TimelineProvider sur snapshot, placeholders (non connecté, données
   périmées, reconnecter), comptes à rebours `Text(timerInterval:)`. *Accept : compile en
   CI ; previews alimentées par les fixtures.* *Relecteur : Sonnet D.*
-- 🟢 libre — **T2.4 App UI** (Sonnet D — après T2.1)
+- 🔒 in-progress — **T2.4 App UI** — @sonnet-b — 2026-07-29
   Onboarding/connexion par provider (champ code-paste Claude, bouton login Codex),
   dashboard (anneaux/barres, crédits Codex, « à jour il y a X min »), réglages (comptes,
   seuils, intervalle, style). *Accept : compile en CI ; états loading/erreur/vide
