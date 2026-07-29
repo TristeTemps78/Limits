@@ -23,14 +23,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: List available Xcode versions
-        run: ls /Applications | grep Xcode
-
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
-
-      - name: xcodebuild -version
-        run: xcodebuild -version
+      # Une version d'Xcode figee ne suffit PAS : le 2026-07-29, une image macos-15
+      # portait bien Xcode_16.2 mais sans la plateforme iOS 18.2 installee, et l'archive
+      # echouait sur « iOS 18.2 is not installed » alors que le meme commit passait sur
+      # une autre image. On choisit donc le plus recent Xcode qui possede reellement un
+      # SDK iphoneos, et on echoue avec un message explicite si aucun n'en a.
+      - name: Select an Xcode that actually has the iOS SDK installed
+        run: |
+          set -euo pipefail
+          chosen=""
+          for app in $(ls -d /Applications/Xcode*.app 2>/dev/null | sort -Vr); do
+            if "$app/Contents/Developer/usr/bin/xcodebuild" -showsdks 2>/dev/null | grep -qi "iphoneos"; then
+              chosen="$app"
+              break
+            fi
+          done
+          if [ -z "$chosen" ]; then
+            echo "::error::Aucun Xcode de ce runner n'a de SDK iphoneos installe."
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$chosen"
+          echo "XCODE_APP=$chosen" >> "$GITHUB_ENV"
+          {
+            echo "### Build environment"
+            echo ""
+            echo "- Xcode: \`$chosen\`"
+            xcodebuild -version | sed 's/^/- /'
+            xcodebuild -showsdks | grep -i "iphoneos" | sed 's/^/- SDK: /'
+          } >> "$GITHUB_STEP_SUMMARY"
+          xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -57,6 +79,15 @@ jobs:
             echo "::error::LimitsWidgets.appex missing from Limits.app/PlugIns — widget extension was not embedded."
             exit 1
           fi
+
+          # Tracabilite : savoir quel commit et quel Xcode ont produit une IPA donnee,
+          # sans avoir a remonter le run Actions correspondant.
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "xcode=${XCODE_APP:-unknown}"
+          } > build/Payload/Limits.app/build-info.txt
 
           cd build && zip -r Limits.ipa Payload
 
