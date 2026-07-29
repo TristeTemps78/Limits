@@ -51,7 +51,10 @@ final class TokenRefreshCoordinatorTests: XCTestCase {
             return collected
         }
 
-        XCTAssertEqual(await counter.count, 1, "un seul appel réseau pour 10 appelants")
+        // `await` doit être hissé hors de l'autoclosure de XCTAssert : une propriété
+        // isolée à un acteur ne peut pas y être lue.
+        let callCount = await counter.count
+        XCTAssertEqual(callCount, 1, "un seul appel réseau pour 10 appelants")
         XCTAssertEqual(Set(results).count, 1, "tous les appelants reçoivent le même résultat")
     }
 }
