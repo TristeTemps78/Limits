@@ -7,10 +7,12 @@ import LimitsCore
 /// countdown — see `WindowDisplayState.awaitingRefresh`'s doc comment for why
 /// `Text(timerInterval:)` alone can't distinguish those on its own).
 ///
-/// `Text(timerInterval:)` updates live, on-device, without spending any timeline-reload
-/// budget — this is the one piece of UI in the whole widget that must never be
-/// recomputed on a schedule; `WidgetTimelinePlanner` only schedules a new entry for the
-/// *transition* into `.awaitingRefresh`, not to tick the countdown itself.
+/// Both `Text(timerInterval:)` and `Text(_:style: .relative)` update live, on-device,
+/// without spending any timeline-reload budget — this is the one piece of UI in the
+/// whole widget that must never be recomputed on a schedule; `WidgetTimelinePlanner`
+/// only schedules a new entry for the *transition* into `.awaitingRefresh`, not to tick
+/// the countdown itself. Which of the two styles is used for a `.counting` window is a
+/// legibility choice (`WindowPresentation.countdownRenderStyle`), not a cost trade-off.
 ///
 /// Exposed as a static `Text`-returning function (`countdownText`) as well as a `View`
 /// wrapper, so `accessoryInline` — which has room for exactly one line and needs to
@@ -22,11 +24,17 @@ enum ResetCountdown {
         case .inactive:
             return Text("inactif")
         case .counting(let resetsAt):
-            // Displays hours:minutes:seconds and counts down live; for a multi-day
-            // weekly window this reads as a large hour count (e.g. "144:00:00")
-            // rather than "6j" — a known `Text(timerInterval:)` formatting quirk with
-            // no documented day-granularity mode, only verifiable by eye on-device.
-            return Text(timerInterval: now...resetsAt, countsDown: true)
+            // Both branches are native, auto-updating `Text` styles — neither costs a
+            // timeline entry. `WindowPresentation.countdownRenderStyle` picks based on
+            // legibility, not budget: precise (mm:ss-accurate) makes sense for a
+            // window closing soon, but degrades to an unreadable "144:00:00" for a
+            // multi-day wait, where "dans 6 j" (`.relative`) is what a glance needs.
+            switch WindowPresentation.countdownRenderStyle(resetsAt: resetsAt, now: now) {
+            case .precise:
+                return Text(timerInterval: now...resetsAt, countsDown: true)
+            case .relative:
+                return Text(resetsAt, style: .relative)
+            }
         case .awaitingRefresh:
             return Text("réinitialisation attendue")
         }

@@ -33,7 +33,7 @@ struct RingGauge: View {
                 .widgetAccentable()
 
             if showsPercentText {
-                Text(percentLabel)
+                Text(percent.roundedPercentText)
                     .font(.system(.callout, design: .rounded).bold())
                     .minimumScaleFactor(0.6)
             }
@@ -51,10 +51,6 @@ struct RingGauge: View {
                 }
             }
         }
-        .accessibilityLabel("\(percentLabel), \(severity.shortLabel)")
-    }
-
-    private var percentLabel: String {
-        "\(Int(percent.rounded()))%"
+        .accessibilityLabel("\(percent.roundedPercentText), \(severity.shortLabel)")
     }
 }

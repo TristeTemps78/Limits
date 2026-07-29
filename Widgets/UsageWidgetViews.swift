@@ -89,15 +89,29 @@ private struct InlineUsageView: View {
         if let provider = reconnectNeeded.first {
             Label("\(provider.displayName) : reconnexion requise", systemImage: "person.crop.circle.badge.exclamationmark")
         } else if let selection = WindowSelector.mostUrgent(in: snapshots) {
+            let severity = WindowSeverity.classify(selection.window)
             Label {
-                Text("\(selection.provider.displayName) \(selection.window.windowKind.shortLabel) \(percentText(selection.window.percent)) · ")
+                Text("\(selection.provider.displayName) \(selection.window.windowKind.shortLabel) \(selection.window.percent.roundedPercentText)\(severityWordSuffix(severity)) · ")
                     + ResetCountdown.text(for: selection.window, now: entryDate)
             } icon: {
-                Image(systemName: WindowSeverity.classify(selection.window).symbolName)
+                Image(systemName: severity.symbolName)
             }
         } else {
             Label("Limits : aucune donnée", systemImage: "questionmark.circle")
         }
+    }
+
+    /// The non-chromatic word half of the severity redundancy (`RingGauge`/`BarGauge`
+    /// already carry it via their own badge/glyph parameters). `accessoryInline` is a
+    /// single line at lock-screen size — the family where a triangle and an octagon
+    /// are least distinguishable — so it needs this too, but the line is already
+    /// crowded (provider + window + percent + a live countdown), so the word is only
+    /// appended when it actually adds information: `.normal` already reads
+    /// unambiguously from a plain checkmark, so it's omitted there to keep the common
+    /// case short; `.warning`/`.critical`/`.unknown` are exactly the cases the symbol
+    /// alone risks being misread, so they get the word.
+    private func severityWordSuffix(_ severity: WindowSeverity) -> String {
+        severity == .normal ? "" : " \(severity.shortLabel)"
     }
 }
 
@@ -236,7 +250,8 @@ private struct ProviderColumn: View {
                     BarGauge(
                         title: window.windowKind.shortLabel,
                         percent: window.percent,
-                        severity: WindowSeverity.classify(window)
+                        severity: WindowSeverity.classify(window),
+                        showsSeverityGlyph: true
                     )
                 }
             } else {
@@ -303,7 +318,7 @@ private struct ProviderDetailSection: View {
                     }
                 }
                 if let extraUsage = snapshot?.extraUsage, extraUsage.isEnabled == false, let spendPercent = extraUsage.spendPercent {
-                    Text("Crédits complémentaires : \(percentText(spendPercent))")
+                    Text("Crédits complémentaires : \(spendPercent.roundedPercentText)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -358,8 +373,4 @@ private struct ReconnectBanner: View {
         .foregroundStyle(.orange)
         .widgetAccentable()
     }
-}
-
-private func percentText(_ percent: Double) -> String {
-    "\(Int(percent.rounded()))%"
 }

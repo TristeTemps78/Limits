@@ -34,7 +34,7 @@ struct BarGauge: View {
                     .font(.caption2)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(percentLabel)
+                Text(percent.roundedPercentText)
                     .font(.caption2.bold())
             }
 
@@ -51,10 +51,6 @@ struct BarGauge: View {
             .frame(height: barHeight)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(percentLabel), \(severity.shortLabel)")
-    }
-
-    private var percentLabel: String {
-        "\(Int(percent.rounded()))%"
+        .accessibilityLabel("\(title), \(percent.roundedPercentText), \(severity.shortLabel)")
     }
 }
