@@ -12,7 +12,6 @@ final class DiagnosticsViewModel: ObservableObject {
     @Published private(set) var writeResults: [SharedChannel: DiagnosticResult<Void>] = [:]
     @Published private(set) var writeCount: Int = 0
     @Published private(set) var lastActionAt: Date?
-    @Published private(set) var grantedApplicationGroups: [String]?
 
     let appGroupIdentifier: String
 
@@ -27,7 +26,6 @@ final class DiagnosticsViewModel: ObservableObject {
     /// across relaunches on the same device) and immediately writes once, so the
     /// three channels are always exercised without needing to press the button.
     func onAppear() {
-        grantedApplicationGroups = EntitlementInspector.grantedApplicationGroups()
         refreshReads()
         let existingMax = readResults.values.compactMap { result -> Int? in
             if case .ok(let payload) = result { return payload.writeCount }

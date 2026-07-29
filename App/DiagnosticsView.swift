@@ -14,7 +14,6 @@ struct DiagnosticsView: View {
             List {
                 Section("Identifiants") {
                     LabeledContent("App Group demandé", value: model.appGroupIdentifier)
-                    LabeledContent("Entitlement lu à l'exécution", value: grantedGroupsText)
                 }
 
                 Section("Canaux") {
@@ -48,13 +47,6 @@ struct DiagnosticsView: View {
                 model.onAppear()
             }
         }
-    }
-
-    private var grantedGroupsText: String {
-        guard let groups = model.grantedApplicationGroups, !groups.isEmpty else {
-            return "aucun (entitlement absent ou illisible)"
-        }
-        return groups.joined(separator: ", ")
     }
 }
 
