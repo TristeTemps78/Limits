@@ -13,6 +13,9 @@ DerivedData/
 auth.json
 *token*.json
 
+# Outillage agents (worktrees, reglages locaux) — jamais versionne
+.claude/
+
 # Divers
 .DS_Store
 Thumbs.db

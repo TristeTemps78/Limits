@@ -29,30 +29,54 @@
   *Note : `on: push` reste volontairement sans filtre de branche — c'est ce qui permet à
   chaque agent de prouver son lot sur sa propre branche avant merge.*
 
-## Phase M1 — Dérisquage **[GATE : ne pas lancer M2 sans verdict]**
+## Phase M1 — Dérisquage **[GATE LEVÉ le 2026-07-29 — voir encadré]**
 
-- 🔒 in-progress — **T1.1 App+widget « hello » avec App Group** — @sonnet-b — 2026-07-29
-  L'app écrit une valeur horodatée dans le conteneur App Group + Keychain (access group
-  partagé) ; le widget (systemSmall + accessoryRectangular) l'affiche. *Accept : CI
-  verte, IPA artefact.* *Relecteur : Sonnet A.*
-  Objectif = **diagnostic**, pas esthétique : les 3 canaux (UserDefaults suite, fichier
-  du conteneur App Group, Keychain access group) sont testés séparément et le widget
-  affiche la **cause** de l'échec, pour que le verdict T1.4 soit précis.
-- 🟢 libre — **T1.2 Test humain sideload** (Tristan, ~20 min)
-  Suivre `docs/INSTALL-IPHONE.md` : installer Sideloadly, sideloader l'IPA T1.1.
-  *Vérifier : app démarre ; widget posable (home + lock) ; le widget lit bien la valeur
-  écrite par l'app (App Group survit à la re-signature) ; Keychain OK.*
+> **Décision de Tristan (2026-07-29, soir)** : « continue d'orchestrer le projet […] pour
+> TOUT implémenter ». Le gate M1 d'`AGENTS.md` (« ne pas lancer M2 sans verdict ») est donc
+> **levé sur instruction explicite**, T1.2 étant une action humaine impossible de nuit.
+> Mitigation retenue par l'orchestrateur pour qu'un verdict négatif coûte peu :
+> 1. l'accès aux données côté widget passe par une **abstraction** (`SnapshotSource`), pour
+>    que la bascule « le widget fetch lui-même » reste un changement local ;
+> 2. l'**écran de diagnostic de T1.1 est conservé dans l'app finale** (réglages) — c'est
+>    l'IPA finale que Tristan sideloadera, pas celle de T1.1, donc le test de gate reste
+>    faisable après coup.
+
+- ✅ done — **T1.1 App+widget « hello » avec App Group** — @sonnet-b, relu @sonnet-a — 2026-07-29
+  3 canaux testés **séparément** (UserDefaults suite / fichier du conteneur App Group /
+  Keychain), chacun avec sa cause d'échec affichée dans l'app **et** dans le widget
+  (`systemSmall` + `accessoryRectangular`). CI verte : run 30447596953.
+  Décisions techniques à retenir :
+  - **`kSecAttrAccessGroup` volontairement omis** : `$(AppIdentifierPrefix)` n'existe qu'au
+    build et serait remappé par Sideloadly ; l'item va dans le premier groupe des
+    `keychain-access-groups`, identique sur les deux cibles. Aucun préfixe en dur.
+  - **`kSecAttrAccessibleAfterFirstUnlock`** obligatoire, sinon le widget d'écran verrouillé
+    ne lit rien et on conclurait à tort « Keychain KO ».
+  - **`SecTaskCreateFromSelf` inexploitable sur iOS** (compile pour macOS, absent du SDK
+    iOS public) → impossible de lire à l'exécution l'App Group réellement accordé après
+    re-signature. Abandonné plutôt que contourné.
+  - **`UserDefaults(suiteName:)` ne renvoie pas `nil` sans entitlement** sur iOS : il crée un
+    domaine isolé au process. Le signal fiable est la **comparaison du compteur** entre
+    l'écran de l'app et le widget (le widget ne fait que lire → preuve cross-process réelle).
+  - `WidgetKit` seul ne suffit pas : `import SwiftUI` est requis pour voir `Widget`/`WidgetBundle`.
+- ⏳ **en attente de Tristan** — **T1.2 Test humain sideload** (~20 min)
+  Suivre `docs/INSTALL-IPHONE.md` : installer Sideloadly, sideloader **l'IPA finale** (le
+  diagnostic est conservé dans les réglages de l'app, cf. encadré ci-dessus).
+  *Vérifier : app démarre ; widget posable (home + lock) ; le compteur affiché par le
+  widget est bien celui écrit par l'app (preuve cross-process) ; ligne Keychain OK.*
+  Grille de lecture des messages d'échec : `docs/INSTALL-IPHONE.md`.
 - ✅ done — **T1.3 Capture des fixtures depuis le PC** — @claude-fable — 2026-07-29
   `scripts/capture-fixtures.ps1` exécuté : 4 fixtures réelles anonymisées dans
   `fixtures/` + `fixtures/capture-report.md` (headers validés, codes HTTP).
-- 🟢 libre — **T1.4 Verdict de gate** (Opus)
+- ⏳ **bloqué par T1.2** — **T1.4 Verdict de gate** (Opus)
   Si App Group KO après re-signature : réessayer via AltStore ; si toujours KO, basculer
   l'architecture « widget fetch lui-même » (décision documentée ici et dans PLAN.md).
+  La bascule est pré-cadrée : le widget lit à travers `SnapshotSource`, seul le
+  fournisseur change.
 
 ## Phase M2 — Cœur (parallèle, worktrees `agent/<sonnet-X>/<tâche>`)
 
-- 🟢 libre — **T2.1 LimitsCore : modèles + clients usage** (Sonnet A — *à livrer en
-  premier, débloque T2.3/T2.4*)
+- 🔒 in-progress — **T2.1 LimitsCore : modèles + clients usage** — @sonnet-a — 2026-07-29
+  (*à livrer en premier, débloque T2.3/T2.4*)
   `Models`, `ClaudeUsageClient`, `CodexUsageClient` (parsing tolérant multi-alias piloté
   par `fixtures/`), `PollingPolicy` (§6 PLAN.md), `SnapshotStore`. Points durs vérifiés
   sur fixtures : Claude → privilégier `limits[]`, pourcents 0-100, `resets_at` null si
@@ -60,7 +84,7 @@
   par position primary/secondary), `secondary_window` peut être null. *Accept : tests
   unitaires couvrant chaque fixture + cas 429/401/clé inconnue ; CI verte.*
   *Relecteur : Sonnet B.*
-- 🟢 libre — **T2.2 OAuth Claude + Codex** (Sonnet B)
+- 🔒 in-progress — **T2.2 OAuth Claude + Codex** — @sonnet-b — 2026-07-29
   `ClaudeOAuth` (PKCE, parse `code#state`, exchange, refresh), `CodexOAuth` (PKCE,
   refresh, account_id depuis JWT), `KeychainStore`, `LocalCallbackServer` (:1455).
   **Commencer par re-vérifier les flows dans les sources de claude-code / codex-rs**
