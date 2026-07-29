@@ -7,16 +7,17 @@
 
 ## Phase 0 — Bootstrap (Opus, séquentiel)
 
-- 🟢 libre — **T0.1 Repo GitHub public + remote**
+- 🔒 in-progress — **T0.1 Repo GitHub public + remote** — @claude-opus — 2026-07-29
   Créer le repo public (gh), pousser. *Accept : `git push` OK, repo visible.*
-- 🟢 libre — **T0.2 Scaffold XcodeGen 3 targets**
+- 🔒 in-progress — **T0.2 Scaffold XcodeGen 3 targets** — @sonnet-a — 2026-07-29
   `project.yml` : app iOS 17+ `com.caldf.limitsapp`, extension WidgetKit, package
   `LimitsCore` (squelettes compilables minimaux). *Accept : `xcodegen generate` +
-  `xcodebuild archive` passent en CI.*
-- 🟢 libre — **T0.3 CI build.yml**
+  `xcodebuild archive` passent en CI.* *Relecteur : Sonnet B.*
+- 🔒 in-progress — **T0.3 CI build.yml** — @sonnet-a — 2026-07-29
   Workflow §5.1 de PLAN.md : job test (swift test LimitsCore) + job ipa (archive non
   signée → artefact `Limits.ipa`) + Release sur tag. *Accept : artefact téléchargeable
-  sur un push.*
+  sur un push.* *Relecteur : Sonnet B. Livré avec T0.2 (même lot : l'accept de T0.2
+  exige la CI).*
 
 ## Phase M1 — Dérisquage **[GATE : ne pas lancer M2 sans verdict]**
 
