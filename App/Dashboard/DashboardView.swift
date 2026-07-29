@@ -61,8 +61,18 @@ struct DashboardView: View {
             }
         }
         .task {
+            // Les seuils viennent des réglages : le premier plan doit programmer les mêmes
+            // notifications que la tâche de fond, sinon un franchissement constaté à
+            // l'écran ne serait jamais annoncé.
+            model.notificationThresholds = [settings.warningThresholdPercent, settings.criticalThresholdPercent]
             model.refreshConnectionStatus()
             await model.fetchAllIfNeeded(trigger: .scheduled)
+        }
+        .onChange(of: settings.warningThresholdPercent) { _, newValue in
+            model.notificationThresholds = [newValue, settings.criticalThresholdPercent]
+        }
+        .onChange(of: settings.criticalThresholdPercent) { _, newValue in
+            model.notificationThresholds = [settings.warningThresholdPercent, newValue]
         }
         .onReceive(NotificationCenter.default.publisher(for: .limitsProviderConnectionChanged)) { _ in
             model.refreshConnectionStatus()

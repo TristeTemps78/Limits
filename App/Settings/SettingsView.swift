@@ -3,6 +3,7 @@ import LimitsCore
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettingsStore
+    @State private var notificationsAuthorized: Bool?
 
     var body: some View {
         NavigationStack {
@@ -22,9 +23,21 @@ struct SettingsView: View {
                         Text("Seuil critique : \(Int(settings.criticalThresholdPercent)) %")
                         Slider(value: $settings.criticalThresholdPercent, in: 50...100, step: 5)
                     }
-                    Text("La programmation des notifications locales n'est pas encore branchée sur ces seuils.")
+                    if notificationsAuthorized == false {
+                        Button("Autoriser les notifications") {
+                            Task { notificationsAuthorized = await LocalNotificationScheduler.requestAuthorization() }
+                        }
+                        Text(
+                            "Sans autorisation, aucune alerte de seuil ni de réinitialisation ne sera envoyée. " +
+                            "Il n'y a pas de notification poussée : tout est programmé localement sur l'appareil."
+                        )
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    } else {
+                        Text("Alertes locales aux seuils ci-dessus et à chaque réinitialisation de fenêtre.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Rafraîchissement") {
@@ -60,6 +73,12 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Réglages")
+            .task {
+                // On ne demande jamais l'autorisation au premier lancement : un prompt
+                // système sans contexte se fait refuser, et un refus est difficile à
+                // rattraper. On l'affiche ici, à côté des seuils qu'il sert.
+                notificationsAuthorized = await LocalNotificationScheduler.authorizationStatus() == .authorized
+            }
         }
     }
 }

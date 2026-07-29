@@ -142,6 +142,9 @@ final class CodexConnectViewModel: NSObject, ObservableObject {
             pendingVerifier = nil
             expectedState = nil
             boundPort = nil
+            // `PollingState.needsReconnect` est terminal : sans ce reset, une reconnexion
+            // reussie laisserait l'app bloquee malgre un token neuf.
+            RefreshStateStore().clear(provider: .codex)
             state = .connected
             NotificationCenter.default.post(name: .limitsProviderConnectionChanged, object: nil)
         case .failure:
@@ -151,6 +154,7 @@ final class CodexConnectViewModel: NSObject, ObservableObject {
 
     func disconnect() {
         _ = tokenStore.delete()
+        RefreshStateStore().clear(provider: .codex)
         state = .notConnected
         NotificationCenter.default.post(name: .limitsProviderConnectionChanged, object: nil)
     }
