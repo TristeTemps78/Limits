@@ -21,6 +21,10 @@ struct UsageWidgetView: View {
             PlaceholderView(message: error.widgetDiagnosticMessage, systemImage: "externaldrive.badge.exclamationmark")
         case .notConnected:
             PlaceholderView(message: "Non connecté", systemImage: "person.crop.circle.badge.questionmark")
+        case .unexpectedPayload:
+            // Formulation qui distingue explicitement ce cas de « non connecté » : ici,
+            // se reconnecter ne servirait à rien. Court, la place est comptée.
+            PlaceholderView(message: "Format d'API inattendu — mise à jour requise", systemImage: "exclamationmark.bubble")
         case .ready(let snapshots, let freshness, let reconnectNeeded):
             switch family {
             case .accessoryInline:

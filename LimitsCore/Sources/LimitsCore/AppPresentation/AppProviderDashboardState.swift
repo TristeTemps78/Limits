@@ -25,6 +25,11 @@ public enum AppProviderDashboardState: Equatable, Sendable {
     case loading
     /// A snapshot is available and there is nothing wrong to report.
     case content(snapshot: UsageSnapshot)
+    /// L'appel a réussi (200, décodage OK) mais la réponse ne contient **aucune** donnée
+    /// exploitable. C'est la signature d'un changement de format côté provider, pas d'un
+    /// problème de compte : sans cet état distinct, l'écran afficherait « aucune donnée »
+    /// et l'utilisateur irait se reconnecter pour rien. Cf. `UnexpectedPayloadDetector`.
+    case unexpectedPayload(snapshot: UsageSnapshot)
     /// A snapshot is available but the polling loop is currently backing off
     /// (network error or 429) — the old data is still shown, with why it might be
     /// stale and when the next attempt will happen.
@@ -64,6 +69,12 @@ public enum AppProviderDashboardStateBuilder {
 
         case .idle:
             guard let snapshot = lastSnapshot else { return .loading }
+            // Un fetch réussi qui ne rapporte rien d'exploitable n'est pas un état normal :
+            // on le nomme, plutôt que de laisser un dashboard vide se faire interpréter
+            // comme un problème de connexion.
+            if UnexpectedPayloadDetector.health(of: snapshot) == .unexpectedShape {
+                return .unexpectedPayload(snapshot: snapshot)
+            }
             return .content(snapshot: snapshot)
         }
     }

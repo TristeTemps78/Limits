@@ -16,6 +16,11 @@ import Foundation
 public enum WidgetContentState: Equatable, Sendable {
     case readFailed(SnapshotStoreError)
     case notConnected
+    /// Le snapshot existe et a été écrit par un fetch **réussi**, mais aucun provider n'en
+    /// rapporte de donnée exploitable : signature d'un changement de format côté provider.
+    /// Distinct de `.notConnected`, qui inviterait à se connecter — inutilement.
+    /// Cf. `UnexpectedPayloadDetector`.
+    case unexpectedPayload
     case ready(snapshots: SharedUsageSnapshots, freshness: SnapshotFreshnessLevel, reconnectNeeded: [ProviderKind])
 }
 
@@ -30,6 +35,9 @@ public enum WidgetContentStateBuilder {
         case .success(let snapshots):
             if isNeverConnected(snapshots) {
                 return .notConnected
+            }
+            if isConnectedButNothingUsable(snapshots) {
+                return .unexpectedPayload
             }
             return .ready(
                 snapshots: snapshots,
@@ -50,6 +58,21 @@ public enum WidgetContentStateBuilder {
     /// in `Models.swift`.
     private static func isNotConnectedStatus(_ status: ProviderConnectionStatus?) -> Bool {
         status == nil || status == .notConnected
+    }
+
+    /// Au moins un provider est connecté, aucun n'a de snapshot exploitable, et personne
+    /// n'est en `.needsReconnect` (sinon c'est ce dernier état qui explique la situation).
+    /// Reste alors le cas où l'API a répondu 200 avec un format qu'on ne sait plus lire.
+    private static func isConnectedButNothingUsable(_ snapshots: SharedUsageSnapshots) -> Bool {
+        guard reconnectNeededProviders(snapshots).isEmpty else { return false }
+        let usable = [snapshots.claude, snapshots.codex]
+            .compactMap { $0 }
+            .contains { UnexpectedPayloadDetector.health(of: $0) == .usable }
+        // Un provider connecté mais dont aucun fetch n'a encore abouti a `nil` comme
+        // snapshot : ce n'est pas un format cassé, c'est un premier chargement. On exige
+        // donc qu'au moins un snapshot existe pour parler de format inattendu.
+        let hasAnySnapshot = snapshots.claude != nil || snapshots.codex != nil
+        return hasAnySnapshot && !usable
     }
 
     private static func reconnectNeededProviders(_ snapshots: SharedUsageSnapshots) -> [ProviderKind] {

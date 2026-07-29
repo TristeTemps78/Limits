@@ -1,11 +1,11 @@
 import SwiftUI
 import LimitsCore
 
-/// App-side equivalent of `Widgets/Gauges/SeverityStyle.swift` — the coordinator
-/// asked for the exact same colors/symbols so the app and the widget read as one
-/// system when Tristan looks at them side by side. This can't be shared code (rule 4,
-/// AGENTS.md: `LimitsCore` never imports SwiftUI), so it's duplicated by design, not
-/// by oversight — keep these two files in sync if the widget's mapping ever changes.
+/// Seule la **couleur** est dupliquée entre l'app et le widget : `SwiftUI.Color` ne peut
+/// pas descendre dans `LimitsCore` (règle 4 d'AGENTS.md). Le symbole SF et le mot court,
+/// eux, sont des `String` et vivent désormais dans `LimitsCore.SeverityIconography` —
+/// partagés, donc impossibles à faire diverger. Ce sont précisément eux qui portent
+/// l'information quand iOS écrase les couleurs sur l'écran verrouillé.
 extension WindowSeverity {
     var color: Color {
         switch self {
@@ -13,24 +13,6 @@ extension WindowSeverity {
         case .warning: return .orange
         case .critical: return .red
         case .unknown: return .gray
-        }
-    }
-
-    var symbolName: String {
-        switch self {
-        case .normal: return "checkmark.circle.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .critical: return "exclamationmark.octagon.fill"
-        case .unknown: return "questionmark.circle"
-        }
-    }
-
-    var shortLabel: String {
-        switch self {
-        case .normal: return "OK"
-        case .warning: return "Attention"
-        case .critical: return "Critique"
-        case .unknown: return "?"
         }
     }
 }
