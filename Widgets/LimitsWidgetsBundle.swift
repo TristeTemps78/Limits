@@ -1,3 +1,4 @@
+import SwiftUI
 import WidgetKit
 
 /// Entry point of the LimitsWidgets extension.
