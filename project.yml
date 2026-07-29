@@ -24,7 +24,12 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.caldf.limitsapp
         PRODUCT_NAME: Limits
-        DEVELOPMENT_LANGUAGE: en
+        # Icone : App/Assets.xcassets/AppIcon.appiconset (une seule image 1024, iOS 17+
+        # genere les tailles derivees lui-meme).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # L'app est en francais ; sans cette valeur, iOS afficherait les libelles systeme
+        # (boutons d'alerte, formats de date) en anglais sur un appareil francophone.
+        DEVELOPMENT_LANGUAGE: fr
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.9"
     dependencies:
@@ -54,7 +59,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.caldf.limitsapp.widgets
         PRODUCT_NAME: LimitsWidgets
-        DEVELOPMENT_LANGUAGE: en
+        DEVELOPMENT_LANGUAGE: fr
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.9"
     dependencies:
