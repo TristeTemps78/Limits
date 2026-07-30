@@ -208,11 +208,15 @@
   un second utilisateur) ; voir aussi #114. Ce qui prouve que la chaîne en amont est saine :
   `sideloader team list` passe le provisioning (« Device provisioned successfully ») et ne
   s'arrête que sur « You are not logged in ».
-  **Sortie tentée** : compiler `master` (actif, dernier commit 2026-02-12), qui a reçu depuis
-  la pre-release le correctif *« Sign all dylibs in the bundle instead of just the ones in the
-  frameworks dir »* (2025-02-23) — précisément ce dont dépend un bundle **avec extension
-  widget**. Les artefacts CI aarch64 existent mais **expirent à 90 jours** (ceux de février
-  ont expiré le 2026-05-13), d'où la compilation locale (LDC 1.41 / DUB 1.40).
+  **Compilation de `master` tentée puis abandonnée** (détail dans le guide) : le mur n'est pas
+  l'ARM64 mais **botan 1.13.6**, incompatible avec les compilateurs D récents, tandis que les
+  LDC assez anciens pour lui sont incompatibles avec une Ubuntu récente — `delete` retiré du
+  langage, puis règle de visibilité de D 2.111, puis `libxml2.so.2` absent, puis
+  `libicuuc.so.60`. On s'arrête parce que **rien n'indique que `master` corrige le segfault** :
+  #97 est ouverte depuis mai 2025 et aucun commit ne la mentionne.
+  **Sortie retenue** : emprunter un PC x64 **une seule soirée**, et y installer non pas Limits
+  mais **SideStore** — ensuite c'est SideStore qui installe Limits et re-signe seul chaque
+  semaine. Le montage WSL reste utile (`idevice_id`, `idevicepair`, diagnostics).
   Les étapes suivantes restent **interactives** : elles demandent l'Apple ID de Tristan,
   jamais saisi par un agent.
   Deux détails absents des docs amont, notés dans le guide : `usbmuxd.service` est installé

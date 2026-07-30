@@ -28,11 +28,18 @@
 - **Voie retenue par Tristan (T4.6) : `docs/SIDELOAD-ARM64.md`** — WSL2 + `usbipd-win`
   (MSI **arm64** officiel depuis la 5.3.0) → `usbmuxd` en espace utilisateur → **Sideloader**
   (aarch64) pour signer → **SideStore**, qui re-signe ensuite **sur l'iPhone, sans PC**.
-  Le montage n'a **jamais été exécuté** : chaque étape a son point de contrôle, et le test A0
-  se réduit à `idevice_id -l`. Inconnue à lever en priorité : SideStore signe-t-il un bundle
-  **avec extension widget** ? Sans widget, rien n'est testable.
-  AltServer-Linux a été **écarté** (release de 2022, refresh Wi-Fi jamais implémenté) — ne pas
-  le réintroduire.
+  **Montage exécuté le 2026-07-30 : la partie difficile marche.** `usbipd` 5.3.0 arm64 partage
+  l'iPhone vers WSL2 et Ubuntu lui parle — **A0 PASS** (`idevicepair validate` → SUCCESS,
+  iPhone 15 / iOS 26.0.1).
+  **Ce qui bloque n'a rien à voir avec l'ARM64 : il manque un signeur Linux qui fonctionne.**
+  `sideloader` 1.0-pre4 segfault (bug amont #97, reproduit sur Arch x86_64), et compiler
+  `master` bute sur botan 1.13.6 vs compilateurs D récents — piste abandonnée, détail et
+  tableau des murs dans le guide. **Ne pas la reprendre** sans que #97 soit fermée (et alors
+  via un conteneur ubuntu:22.04 arm64, pas en rafistolant l'hôte).
+  **Sortie retenue** : un PC x64 **une seule soirée**, pour installer **SideStore** (pas
+  Limits) ; ensuite SideStore installe Limits et re-signe seul. Inconnue à lever en priorité :
+  SideStore signe-t-il un bundle **avec extension widget** ? Sans widget, rien n'est testable.
+  AltServer-Linux reste **écarté** (release de 2022, refresh Wi-Fi jamais implémenté).
 - **`docs/TEST-PLAN.md` (T4.4, 2026-07-30) est le protocole à dérouler** : 19 tests numérotés
   couvrant les 7 critères, en trois séances (A = J0 en main, B = arrière-plan à J+1, C =
   re-signature à J+7), avec une fiche de relevé à renvoyer. Le gate se joue en **A2 puis C2** :

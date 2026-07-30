@@ -46,8 +46,11 @@ Les étapes qui ne demandent pas l'iPhone ont été exécutées et **vérifiées
 | 5. binaires | ✅ dans `~/limits-sideload` : `sideloader` (ELF aarch64, `1.0-pre4`, répond à `--help`), `SideStore.ipa` (28 Mo), `Limits.ipa` (652 Ko, release v1.0) |
 | 3. iPhone → Linux | ✅ `usbipd bind --force` puis `attach --wsl` : l'appareil passe à **Attached** |
 | **4. `idevice_id -l`** | ✅ **le blocage ARM64 est contourné, constaté** : `idevicepair validate` → SUCCESS, `ideviceinfo` répond (iPhone15,4 sous **iOS 26.0.1**) |
-| 5. signature | ❌ **`sideloader` 1.0-pre4 segfault** sur `install … -i` (SIGSEGV immédiat, avant même le prompt) |
-| 6, 7 | ⏳ bloqués derrière l'étape 5 |
+| 5. signature | ❌ **impasse** : `sideloader` 1.0-pre4 segfault (bug amont, reproduit sur x86_64), et la compilation de `master` bute sur une cascade de dépendances obsolètes — voir ci-dessous |
+| 6, 7 | ⏳ dépendent d'un signeur qui fonctionne : voir « La sortie retenue » |
+
+**Bilan** : la partie difficile — faire dialoguer un iPhone avec un PC ARM64 — **marche**.
+Ce qui manque n'a rien à voir avec l'architecture : c'est un signeur Linux en état de marche.
 
 ### Le segfault de Sideloader 1.0-pre4 — et pourquoi ce n'est pas l'ARM64
 
@@ -70,10 +73,60 @@ Les artefacts CI aarch64 existent mais **expirent au bout de 90 jours** (ceux du
 ont expiré le 2026-05-13), d'où la compilation locale :
 
 ```bash
-sudo apt install -y ldc dub git
+sudo apt install -y dub git
 git clone --recursive https://github.com/Dadoum/Sideloader.git
-cd Sideloader && dub build :cli --build=release --compiler=ldc2
+
+# ⚠️ PAS le ldc d'Ubuntu (1.41) : la dépendance botan 1.13.6 utilise `delete`,
+# retiré du langage D vers 2.109, et la compilation casse. La CI du projet
+# utilise ldc-1.33, qui n'existe pas en build linux-aarch64 → on prend 1.34.
+cd ~ && wget https://github.com/ldc-developers/ldc/releases/download/v1.34.0/ldc2-1.34.0-linux-aarch64.tar.xz
+tar xf ldc2-1.34.0-linux-aarch64.tar.xz
+
+cd ~/Sideloader
+dub build -b release-debug --compiler=$HOME/ldc2-1.34.0-linux-aarch64/bin/ldc2 :cli-frontend
 ```
+
+Deux pièges de nommage/version :
+
+- le sous-paquet s'appelle **`:cli-frontend`**, pas `:cli` (dub lit le champ `name` du
+  `frontends/cli/dub.json`) ;
+- la CI amont **croise-compile** depuis x86_64 (`--arch aarch64-linux-gnu`), ce qui explique
+  qu'elle puisse utiliser un ldc-1.33 dont aucun build ARM64 natif n'existe.
+
+### ⛔ Cette compilation a été tentée le 2026-07-30 et abandonnée
+
+Le mur n'est pas l'ARM64 : c'est que **botan 1.13.6 est incompatible avec les compilateurs D
+récents**, et que les LDC assez anciens pour lui sont incompatibles avec une Ubuntu récente.
+Le détail, pour ne pas le re-découvrir :
+
+| Tentative | Mur |
+|---|---|
+| `ldc2` 1.41 (paquet Ubuntu) | botan utilise `delete`, retiré du langage vers D 2.109 |
+| idem, après avoir remplacé les 2 `delete` par `destroy()` | `x509_crl.d` : « constructor … is not accessible » — nouvelle règle de visibilité de D 2.111 |
+| LDC 1.34 (dernier proche du 1.33 de la CI) | réclame `libxml2.so.2` ; Ubuntu *resolute* ne fournit plus que `.so.16` |
+| LDC 1.38 + `libxml2.so.2` extraite d'un `.deb` Ubuntu 24.04 | réclame maintenant `libicuuc.so.60` (ICU d'Ubuntu 18.04) |
+
+On s'arrête là parce que le calcul ne tient plus : **rien ne dit que `master` corrige le
+segfault**. L'issue #97 est ouverte depuis mai 2025 et aucun commit de `master` ne la
+mentionne — on empilerait des bibliothèques obsolètes pour obtenir un binaire qui a toutes
+les chances de crasher pareil.
+
+*Si on devait reprendre* : la voie propre serait un conteneur **ubuntu:22.04 arm64** (même
+environnement que la CI amont, glibc 2.35, `libxml2.so.2` et ICU 70 d'origine), et non du
+rafistolage sur l'hôte. À ne tenter que si l'issue #97 se ferme.
+
+## La sortie retenue : un PC x64, une seule fois — pour SideStore
+
+Le raisonnement tient en deux lignes : ce n'est pas **Limits** qu'il faut installer depuis un
+PC, c'est **SideStore**. Une fois SideStore sur l'iPhone, c'est lui qui installe Limits et qui
+re-signe tout seul chaque semaine. Le PC x64 emprunté ne sert donc **qu'une soirée**, et le
+montage WSL de ce document reste utile ensuite (`idevice_id`, `idevicepair`, diagnostics).
+
+1. Sur le PC x64 : iTunes/Apple Devices + Sideloadly (`INSTALL-IPHONE.md` §1-4), sideloader
+   **`SideStore.ipa`**.
+2. Générer le fichier de pairing et l'importer dans SideStore (étape 6 ci-dessus).
+3. Depuis l'iPhone, dans SideStore : installer **`Limits.ipa`**.
+4. Vérifier immédiatement la présence des **deux** widgets, puis dérouler `TEST-PLAN.md`.
 
 Deux détails relevés en cours de route, qui ne sont pas dans les docs amont :
 
