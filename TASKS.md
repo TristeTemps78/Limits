@@ -188,6 +188,10 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
+- 🔒 in-progress — **T4.4 Plan de test device** — @claude-opus — 2026-07-30
+  `docs/TEST-PLAN.md` : protocole exécutable des 7 critères de la checklist finale, en trois
+  séances (J0 / J+1 / J+7). `INSTALL-IPHONE.md` §6 reste la référence du gate M1 — le plan y
+  renvoie sans la recopier.
 - ✅ done — **T4.3 Release v1.0** — @claude-opus — 2026-07-30
   Tag `v1.0` → `Limits.ipa` en Release GitHub (job `release` vérifié fonctionnel) :
   https://github.com/TristeTemps78/Limits/releases/tag/v1.0
