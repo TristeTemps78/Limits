@@ -10,6 +10,7 @@ IPA non signée produite par GitHub Actions, installée via Sideloadly.
 - ✅ Avancement / tâches : [TASKS.md](TASKS.md)
 - 🤖 Règles agents : [AGENTS.md](AGENTS.md)
 - 📱 Installation sur iPhone : [docs/INSTALL-IPHONE.md](docs/INSTALL-IPHONE.md)
+- 🧪 Protocole de validation sur device : [docs/TEST-PLAN.md](docs/TEST-PLAN.md)
 - 🔍 Vérification des flows OAuth (valeur par valeur, avec sources) :
   [docs/oauth-verification-2026-07-29.md](docs/oauth-verification-2026-07-29.md)
 
@@ -27,6 +28,10 @@ IPA non signée produite par GitHub Actions, installée via Sideloadly.
 
 Pas de serveur, pas de télémétrie, pas de notification poussée (impossible en signature
 gratuite — tout est programmé localement sur l'appareil).
+
+⚠️ « Fonctionne » veut dire ici : **compile, s'archive et passe 300 tests en CI**. Rien n'a
+encore tourné sur un iPhone — c'est ce que
+[docs/TEST-PLAN.md](docs/TEST-PLAN.md) sert à établir.
 
 ## Architecture en trois phrases
 

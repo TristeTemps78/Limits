@@ -19,6 +19,13 @@
   faire le test de gate décrit dans `docs/INSTALL-IPHONE.md` §6 (grille de lecture des
   messages de diagnostic incluse). Le verdict T1.4 en dépend, et avec lui la validité de
   l'architecture « l'app écrit, le widget lit un snapshot ».
+- **`docs/TEST-PLAN.md` (T4.4, 2026-07-30) est le protocole à dérouler** : 19 tests numérotés
+  couvrant les 7 critères, en trois séances (A = J0 en main, B = arrière-plan à J+1, C =
+  re-signature à J+7), avec une fiche de relevé à renvoyer. Le gate se joue en **A2 puis C2** :
+  c'est la re-signature qui casse les App Groups, un A2 vert à J0 ne suffit pas au verdict.
+  Deuxième point de rupture identifié à la rédaction : **A4, le login Codex** — le serveur de
+  callback écoute dans l'app sur `:1455` alors que la page d'autorisation tourne dans un autre
+  processus iOS ; ce chemin n'a jamais été vérifié ailleurs que sur macOS.
 - **À relire en priorité** : T3.1 (fil arrière-plan) et l'audit final ont été écrits **et**
   relus par l'orchestrateur — la limite de dépenses mensuelle a coupé les sous-agents en
   pleine phase M3. C'est le « rédacteur = relecteur » qu'`AGENTS.md` interdit.

@@ -56,6 +56,10 @@ automatique. Sinon : rebrancher l'USB et refaire l'étape 3 (2 min, données con
 
 ## 6. Le test de dérisquage (gate M1) — 5 min, à faire au premier lancement
 
+> Ce paragraphe reste la référence du gate M1. Il est le **test A2** du protocole complet
+> `TEST-PLAN.md`, qui enchaîne ensuite les 6 autres critères (logins réels, dashboard,
+> widgets, arrière-plan, notifications, J+7). Commence par là si tu viens de sideloader.
+
 C'est **le** test qui décide de l'architecture du projet. Avec un Apple ID gratuit, les
 App Groups ne sont pas créables dans le portail développeur et Sideloadly **remappe** les
 identifiants à la re-signature : rien ne garantit a priori que l'app et le widget partagent
@@ -95,6 +99,9 @@ maintenant » dans l'app, et compare.
    maintenant » puis « Recharger les timelines » ?
 4. La ligne Keychain du widget affiche-t-elle une valeur ou une erreur ?
 5. Après une re-signature (J+7 ou forcée), les données sont-elles conservées ?
+
+La suite du protocole (logins, dashboard, widgets, arrière-plan, re-signature à J+7) est
+dans `TEST-PLAN.md`, séances A à C.
 
 Si le point 3 échoue, l'architecture bascule — c'est prévu et pré-câblé (le widget lit à
 travers une abstraction, `SnapshotSource`), donc ça ne remet pas en cause le reste du code.

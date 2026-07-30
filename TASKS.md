@@ -64,6 +64,9 @@
   *Vérifier : app démarre ; widget posable (home + lock) ; le compteur affiché par le
   widget est bien celui écrit par l'app (preuve cross-process) ; ligne Keychain OK.*
   Grille de lecture des messages d'échec : `docs/INSTALL-IPHONE.md`.
+  **Protocole exécutable : `docs/TEST-PLAN.md` — tests A1 et A2 (le gate), puis C2 à J+7**
+  (c'est la re-signature qui casse les App Groups : un A2 vert à J0 ne suffit pas au verdict).
+  Le reste de la séance A enchaîne dans la foulée, tant que l'iPhone est en main.
 - ✅ done — **T1.3 Capture des fixtures depuis le PC** — @claude-fable — 2026-07-29
   `scripts/capture-fixtures.ps1` exécuté : 4 fixtures réelles anonymisées dans
   `fixtures/` + `fixtures/capture-report.md` (headers validés, codes HTTP).
@@ -188,10 +191,23 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
-- 🔒 in-progress — **T4.4 Plan de test device** — @claude-opus — 2026-07-30
-  `docs/TEST-PLAN.md` : protocole exécutable des 7 critères de la checklist finale, en trois
-  séances (J0 / J+1 / J+7). `INSTALL-IPHONE.md` §6 reste la référence du gate M1 — le plan y
-  renvoie sans la recopier.
+- ✅ done — **T4.4 Plan de test device** — @claude-opus — 2026-07-30
+  `docs/TEST-PLAN.md` : les 7 critères de la checklist finale en 19 tests numérotés, sur
+  trois séances (J0 en main / J+1 pour l'arrière-plan / J+7 pour la re-signature), avec une
+  fiche de relevé à me renvoyer. `INSTALL-IPHONE.md` §6 reste la référence du gate M1 — le
+  plan y renvoie plutôt que de recopier la grille.
+  Ce que la rédaction a mis en évidence, et qui n'était écrit nulle part :
+  - **A4 (login Codex) est le deuxième point de rupture du projet**, après le gate App Group :
+    le serveur de callback écoute dans l'app sur `:1455` et la page d'autorisation tourne dans
+    un **autre processus** iOS. Vérifié sur macOS, jamais sur iOS. Le plan distingue les deux
+    signatures d'échec, qui n'appellent pas la même correction.
+  - **B1 ne se mesure qu'en ne touchant pas à l'app** : l'ouvrir déclenche un fetch et détruit
+    la mesure. Le protocole le dit avant les gestes, pas après.
+  - **B4 (notification de seuil) peut être structurellement intestable** : le curseur ne
+    descend pas sous 50 %, donc rien à observer si aucun usage réel ne dépasse ce niveau.
+    `BLOQUÉ` est un verdict prévu par la fiche de relevé, distinct de `FAIL`.
+  - **A5 est la seule vérification qui puisse invalider le parsing** : recouper les
+    pourcentages avec `/usage`. Les 300 tests ne valident que 4 fixtures d'un compte, un jour.
 - ✅ done — **T4.3 Release v1.0** — @claude-opus — 2026-07-30
   Tag `v1.0` → `Limits.ipa` en Release GitHub (job `release` vérifié fonctionnel) :
   https://github.com/TristeTemps78/Limits/releases/tag/v1.0
@@ -253,10 +269,16 @@ qu'il a produit :
 
 ## Critère global « tout marche » (checklist finale)
 
-1. CI verte (tests + IPA) sur chaque push.
-2. Login Claude **et** Codex réussis sur l'iPhone.
-3. Dashboard = vraies fenêtres 5 h/hebdo + crédits Codex.
-4. Widgets home + lock screen posés, corrects, compte à rebours qui défile.
-5. Widget rafraîchi après une session Claude Code sur le PC (délai BGTask accepté).
-6. Notification locale reçue à un reset de fenêtre.
-7. J+7 : re-signature Sideloadly Wi-Fi OK, données conservées.
+Protocole détaillé : `docs/TEST-PLAN.md` (les identifiants entre parenthèses y renvoient).
+
+1. CI verte (tests + IPA) sur chaque push. — *acquis ; **A1** pour l'installabilité*
+2. Login Claude **et** Codex réussis sur l'iPhone. — ***A3**, **A4***
+3. Dashboard = vraies fenêtres 5 h/hebdo + crédits Codex. — ***A5***
+4. Widgets home + lock screen posés, corrects, compte à rebours qui défile. — ***A6**, **A7**, **A8***
+5. Widget rafraîchi après une session Claude Code sur le PC (délai BGTask accepté). — ***B1**, **B2***
+6. Notification locale reçue à un reset de fenêtre. — ***A9**, **B3**, **B4**, **B5***
+7. J+7 : re-signature Sideloadly Wi-Fi OK, données conservées. — ***C1**, **C2**, **C3***
+
+Le gate M1 (T1.2 → verdict T1.4) se joue en **A2 puis C2**. Non couvert par le device et
+assumé comme tel : le format d'API inattendu, le 429 réel, la course sur le journal des
+notifications, les alias de champs Codex (cf. dernière section du plan de test).
