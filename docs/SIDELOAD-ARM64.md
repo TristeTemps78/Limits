@@ -34,9 +34,23 @@ iPhone ──USB──> Windows ARM64 ──usbipd (USB/IP)──> WSL2 Ubuntu a
 | **SideStore** | ✅ très actif | `0.6.3` (2026-05-05), dépôt poussé le 2026-07-29. C'est lui qui **supprime le pèlerinage hebdomadaire** : après un setup initial par PC, il se re-signe sur l'appareil via un tunnel local. |
 | ~~AltServer-Linux~~ | ❌ écarté | Dernière release **2022-04-17**, et son README liste toujours « Support Wi-Fi Refresh » en TODO. Il ne réglait donc pas le renouvellement, contrairement à ce qu'affirmait une première version de `INSTALL-IPHONE.md` §0. |
 
-> **Aucun de ces maillons n'a été exécuté sur cette machine.** Le guide décrit ce que les
-> sources officielles documentent ; chaque étape a un **point de contrôle** explicite pour
-> s'arrêter net dès que la réalité diverge, plutôt que d'empiler des installations.
+## Où on en est — montage du 2026-07-30
+
+Les étapes qui ne demandent pas l'iPhone ont été exécutées et **vérifiées** sur la machine :
+
+| Étape | Constaté |
+|---|---|
+| 1. WSL2 | ✅ WSL **2.7.11.0**, noyau 6.18.33.2, Ubuntu (`resolute`) **aarch64** en version 2 |
+| 2. usbipd-win | ✅ **5.3.0** installé depuis le MSI **arm64** ; `usbipd list` répond et liste les périphériques — **l'ARM64 fonctionne, ce n'est plus une hypothèse** |
+| 4. outils Linux | ✅ `usbmuxd` 1.1.1-7, `libimobiledevice` 1.4.0, `libplist`, `unzip` |
+| 5. binaires | ✅ dans `~/limits-sideload` : `sideloader` (ELF aarch64, `1.0-pre4`, répond à `--help`), `SideStore.ipa` (28 Mo), `Limits.ipa` (652 Ko, release v1.0) |
+| 3, 6, 7 | ⏳ **en attente de l'iPhone branché** — rien de plus ne peut avancer sans lui |
+
+Deux détails relevés en cours de route, qui ne sont pas dans les docs amont :
+
+- `usbmuxd.service` est installé **désactivé** (« static unit ») : il faut le lancer à la main.
+- `sideloader tool list` **refuse de fonctionner sans appareil connecté** (« Please connect a
+  device ») — le fichier de pairing de l'étape 6 se génère donc iPhone branché.
 
 ## Ce qui reste vrai malgré le contournement
 
@@ -100,8 +114,8 @@ chaîne casse, et c'est une information nette à me remonter (avec la sortie de 
 
 ```bash
 sudo apt update
-sudo apt install -y usbmuxd libimobiledevice6 libimobiledevice-utils unzip
-sudo systemctl start usbmuxd
+sudo apt install -y usbmuxd libimobiledevice-utils unzip
+sudo usbmuxd          # le paquet l'installe DÉSACTIVÉ (« static unit ») : à lancer à la main
 idevice_id -l
 ```
 
@@ -122,15 +136,19 @@ premier plan pour voir les erreurs : `sudo usbmuxd -f -v`.
 Récupérer le signeur et l'IPA de SideStore :
 
 ```bash
+mkdir -p ~/limits-sideload && cd ~/limits-sideload
+
 # Sideloader CLI pour Linux arm64 (pre-release 1.0-pre4)
 wget https://github.com/Dadoum/Sideloader/releases/download/1.0-pre4/sideloader-cli-aarch64-linux-gnu.zip
-unzip sideloader-cli-aarch64-linux-gnu.zip && chmod +x sideloader
+unzip -o sideloader-cli-aarch64-linux-gnu.zip
+mv -f sideloader-cli-aarch64-linux-gnu sideloader && chmod +x sideloader
 
-# SideStore 0.6.3
-wget https://github.com/SideStore/SideStore/releases/latest/download/SideStore.ipa
+# SideStore, et l'IPA de Limits
+wget -O SideStore.ipa https://github.com/SideStore/SideStore/releases/latest/download/SideStore.ipa
+wget -O Limits.ipa https://github.com/TristeTemps78/Limits/releases/download/v1.0/Limits.ipa
 ```
 
-Puis :
+*(Déjà fait sur cette machine — cf. « Où on en est ».)* Puis :
 
 ```bash
 ./sideloader install SideStore.ipa -i
@@ -150,7 +168,9 @@ activer (redémarrage).
 SideStore a besoin d'un fichier `.mobiledevicepairing` pour piloter l'appareil sans PC.
 Deux façons de l'obtenir :
 
-- avec Sideloader : `./sideloader tool run 0` ;
+- avec Sideloader : `./sideloader tool list` pour voir les outils disponibles (⚠️ il exige un
+  **appareil connecté**, sinon il répond « Please connect a device »), puis
+  `./sideloader tool run <n>` ;
 - ou avec `idevice_pair`, l'outil officiel de SideStore, en build **AArch64** — voir
   https://docs.sidestore.io/docs/advanced/pairing-file (SideStore n'accepte que le format
   `.mobiledevicepairing`).

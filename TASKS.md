@@ -191,6 +191,14 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
+- 🔒 in-progress — **T4.7 Montage de la chaîne ARM64** — @claude-opus + Tristan — 2026-07-30
+  Étapes exécutées et vérifiées **sans l'iPhone** : WSL2 2.7.11 + Ubuntu aarch64 ; **usbipd-win
+  5.3.0 arm64 installé et fonctionnel** (`usbipd list` répond — le support ARM64 est un fait
+  constaté, plus une lecture de README) ; `usbmuxd` 1.1.1 + `libimobiledevice` 1.4.0 ;
+  `sideloader` (ELF aarch64) + `SideStore.ipa` + `Limits.ipa` dans `~/limits-sideload`.
+  **Bloqué sur un geste humain : brancher l'iPhone en USB** (étapes 3, 6, 7).
+  Deux détails absents des docs amont, notés dans le guide : `usbmuxd.service` est installé
+  désactivé, et `sideloader tool list` exige un appareil connecté.
 - ✅ done — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30
   `docs/SIDELOAD-ARM64.md` : montage en 7 étapes, un **point de contrôle par étape** pour
   s'arrêter net dès que la réalité diverge. Principe : côté Linux, `usbmuxd` parle à l'iPhone
