@@ -201,8 +201,20 @@
   répond (**iPhone 15 / iPhone15,4, iOS 26.0.1**). Deux pièges documentés dans le guide :
   « Device busy (exported) » (Windows tient l'appareil → `--force`, réversible) et
   « no WSL 2 distribution running » (`attach` exige une distro déjà démarrée).
-  Reste les étapes **interactives**, à faire par Tristan dans son propre terminal : elles
-  demandent son Apple ID (jamais saisi par un agent).
+  **⛔ Bloqué à l'étape 5 (signature)** : `sideloader` **1.0-pre4 segfault** sur
+  `install … -i` (SIGSEGV immédiat, avant le prompt de mot de passe). **Ce n'est pas l'ARM64** :
+  l'issue amont [#97](https://github.com/Dadoum/Sideloader/issues/97) reproduit la même
+  commande et le même crash sur **Arch Linux x86_64** (ouverte depuis mai 2025, confirmée par
+  un second utilisateur) ; voir aussi #114. Ce qui prouve que la chaîne en amont est saine :
+  `sideloader team list` passe le provisioning (« Device provisioned successfully ») et ne
+  s'arrête que sur « You are not logged in ».
+  **Sortie tentée** : compiler `master` (actif, dernier commit 2026-02-12), qui a reçu depuis
+  la pre-release le correctif *« Sign all dylibs in the bundle instead of just the ones in the
+  frameworks dir »* (2025-02-23) — précisément ce dont dépend un bundle **avec extension
+  widget**. Les artefacts CI aarch64 existent mais **expirent à 90 jours** (ceux de février
+  ont expiré le 2026-05-13), d'où la compilation locale (LDC 1.41 / DUB 1.40).
+  Les étapes suivantes restent **interactives** : elles demandent l'Apple ID de Tristan,
+  jamais saisi par un agent.
   Deux détails absents des docs amont, notés dans le guide : `usbmuxd.service` est installé
   désactivé, et `sideloader tool list` exige un appareil connecté.
 - ✅ done — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30

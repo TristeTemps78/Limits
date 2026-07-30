@@ -46,7 +46,34 @@ Les étapes qui ne demandent pas l'iPhone ont été exécutées et **vérifiées
 | 5. binaires | ✅ dans `~/limits-sideload` : `sideloader` (ELF aarch64, `1.0-pre4`, répond à `--help`), `SideStore.ipa` (28 Mo), `Limits.ipa` (652 Ko, release v1.0) |
 | 3. iPhone → Linux | ✅ `usbipd bind --force` puis `attach --wsl` : l'appareil passe à **Attached** |
 | **4. `idevice_id -l`** | ✅ **le blocage ARM64 est contourné, constaté** : `idevicepair validate` → SUCCESS, `ideviceinfo` répond (iPhone15,4 sous **iOS 26.0.1**) |
-| 6, 7 | ⏳ étapes interactives : Apple ID à saisir par Tristan lui-même |
+| 5. signature | ❌ **`sideloader` 1.0-pre4 segfault** sur `install … -i` (SIGSEGV immédiat, avant même le prompt) |
+| 6, 7 | ⏳ bloqués derrière l'étape 5 |
+
+### Le segfault de Sideloader 1.0-pre4 — et pourquoi ce n'est pas l'ARM64
+
+`./sideloader install Limits.ipa -i` meurt en SIGSEGV. **Ce n'est ni WSL ni l'ARM64** :
+l'issue [#97](https://github.com/Dadoum/Sideloader/issues/97) reproduit exactement la même
+commande et le même crash sur **Arch Linux x86_64** (mai 2025, toujours ouverte, confirmée par
+un second utilisateur sur Nobara 42). Voir aussi
+[#114](https://github.com/Dadoum/Sideloader/issues/114) (décembre 2025).
+
+Ce qui marche quand même dans ce binaire, et qui prouve que la chaîne en amont est saine :
+`sideloader team list` va jusqu'au bout du provisioning (« Device provisioned successfully »)
+et ne s'arrête que sur « You are not logged in ». Les bibliothèques Apple (`libCoreADI.so`,
+`libstoreservicescore.so`) ont bien été récupérées dans `~/.config/Sideloader/lib`.
+
+**La sortie** : compiler depuis `master` plutôt que d'utiliser la pre-release d'octobre 2024.
+Le dépôt est actif (dernier commit 2026-02-12) et a reçu depuis des correctifs pertinents,
+dont **« Sign all dylibs in the bundle instead of just the ones in the frameworks dir »**
+(2025-02-23) — exactement le genre de chose dont dépend une app **avec extension widget**.
+Les artefacts CI aarch64 existent mais **expirent au bout de 90 jours** (ceux du 2026-02-12
+ont expiré le 2026-05-13), d'où la compilation locale :
+
+```bash
+sudo apt install -y ldc dub git
+git clone --recursive https://github.com/Dadoum/Sideloader.git
+cd Sideloader && dub build :cli --build=release --compiler=ldc2
+```
 
 Deux détails relevés en cours de route, qui ne sont pas dans les docs amont :
 
