@@ -191,6 +191,10 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
+- 🔒 in-progress — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30
+  Voie choisie par Tristan : WSL2 + `usbipd-win` + signature sous Linux. Écrire le guide
+  vérifié maillon par maillon (`docs/SIDELOAD-ARM64.md`) et corriger ce que T4.5 avait écrit
+  de faux sur AltServer-Linux.
 - ✅ done — **T4.5 Contrainte PC ARM64** — @claude-opus — 2026-07-30
   Le PC de Tristan est un ASUS Vivobook S 15 (Snapdragon X Plus, **Windows 11 ARM64**).
   Parler à un iPhone en USB passe par `usbaapl64.sys`, un **pilote noyau** que Windows on ARM
