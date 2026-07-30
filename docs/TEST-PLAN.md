@@ -8,7 +8,7 @@ finale de `TASKS.md`, en trois séances :
 
 | Séance | Quand | Durée | Ce qu'elle décide |
 |---|---|---|---|
-| **A** | J0, iPhone en main | ~45 min | le gate M1 (T1.2), les deux logins, l'affichage |
+| **A** | J0, iPhone en main | ~1 h (dont **A0**, 15 min) | d'abord si le PC voit l'iPhone, puis le gate M1 (T1.2), les deux logins, l'affichage |
 | **B** | quelques heures plus tard → J+1 | 10 min de gestes, le reste est de l'attente | l'arrière-plan et les notifications |
 | **C** | J+7, à la re-signature | ~10 min | ce qui survit à un renouvellement de certificat |
 
@@ -17,8 +17,10 @@ Installation : `INSTALL-IPHONE.md` §1-5. Grille de lecture du diagnostic App Gr
 
 ## Ce dont tu as besoin
 
-- L'iPhone, le PC avec Sideloadly, et l'IPA de la
+- L'iPhone, **un PC x64** avec Sideloadly, et l'IPA de la
   [Release v1.0](https://github.com/TristeTemps78/Limits/releases/tag/v1.0).
+  ⚠️ **Le Vivobook S 15 est sous Windows ARM64** : il n'a pas de pilote USB Apple utilisable.
+  C'est l'objet du test **A0**, à faire avant tout le reste (`INSTALL-IPHONE.md` §0).
 - Un poste où lancer une **vraie session Claude Code** (pour B2) et de quoi comparer les
   chiffres : `/usage` dans Claude Code.
 - Les comptes Claude Pro/Max et ChatGPT Plus/Pro. **Tu saisis tes identifiants toi-même,
@@ -32,6 +34,7 @@ un `ça marche pas` sans le message affiché ne permet pas de savoir quoi corrig
 ```
 | ID  | PASS / FAIL / BLOQUÉ | ce que j'ai vu |
 |-----|----------------------|----------------|
+| A0  |                      |                |
 | A1  |                      |                |
 | A2  |                      |                |
 | A3  |                      |                |
@@ -60,6 +63,33 @@ qui n'est pas la même information que `FAIL`. Les captures d'écran sont les bi
 ---
 
 # Séance A — J0, iPhone en main (~45 min)
+
+## A0 — ⚠️ Le PC peut-il seulement parler à l'iPhone ? · *préalable à tout*
+
+Le PC de Tristan est un **ASUS Vivobook S 15 sous Windows ARM64** (Snapdragon X Plus). Le
+pilote USB Apple est un **pilote noyau x64**, et Windows on ARM n'émule pas les pilotes
+noyau : l'iPhone risque de n'être jamais détecté. Détail et voies de sortie :
+`INSTALL-IPHONE.md` §0. **Ce test décide si les 19 autres sont seulement exécutables.**
+
+**Gestes** (15 min) :
+1. Installer l'app **Apple Devices** (Microsoft Store) ou iTunes, et **Sideloadly**.
+2. Brancher l'iPhone en USB, répondre **« Se fier à cet ordinateur »**.
+3. Ouvrir le **Gestionnaire de périphériques** et chercher **« Apple Mobile Device USB
+   Device »** (ou « Apple iPhone » sous *Périphériques portables*).
+4. Ouvrir Sideloadly : l'iPhone apparaît-il dans la liste des appareils ?
+
+**Attendu si ça marche** (le scénario optimiste) : l'iPhone est listé dans Sideloadly avec
+son nom. Enchaîner sur A1.
+
+**Attendu si le blocage est confirmé** : pas d'« Apple Mobile Device USB Device » dans le
+gestionnaire, ou un périphérique en erreur (triangle jaune, code 39 / 52 = pilote non
+chargeable), et Sideloadly qui ne voit aucun appareil.
+
+**Si c'est bloqué** : **ne teste rien d'autre**, tout le reste en dépend. Remonte-le tel quel
+et on choisit une voie (`INSTALL-IPHONE.md` §0) : PC x64 emprunté, ou chaîne
+WSL2 + `usbipd-win` + AltServer-Linux sur cette machine. Marque alors **A1 à C3 = BLOQUÉ**,
+ce qui est une information exacte : le produit n'est pas en cause, la chaîne d'installation
+l'est.
 
 ## A1 — Installation et premier lancement · *critère 1*
 
@@ -308,6 +338,11 @@ n'est pas passé.
 
 ## C1 — Le renouvellement Wi-Fi a-t-il marché ? · *critère 7*
 
+> **Si A0 a imposé de passer par un PC emprunté**, ce test est **BLOQUÉ par construction** :
+> le renouvellement automatique suppose une machine allumée sur le même Wi-Fi **chaque
+> semaine**. C'est le vrai coût caché de la voie « PC x64 emprunté », et la raison pour
+> laquelle la chaîne WSL2 sur ta propre machine, si elle tient, vaut son montage.
+
 **Attendu** : avec l'auto-refresh Sideloadly activé (§5) et le PC allumé sur le même Wi-Fi,
 l'app se relance sans rien rebrancher. **`FAIL`** : « Unable to verify app » au lancement — il
 faut alors rebrancher l'USB et refaire §3 (2 min, les données sont conservées).
@@ -334,6 +369,7 @@ données — pas **« App Group indisponible »**, pas **« Aucune donnée »**.
 
 | Échec | Conséquence |
 |---|---|
+| **A0 KO** (iPhone invisible du PC ARM64) | Rien n'est testable, et **le produit n'est pas en cause**. Il faut d'abord une chaîne d'installation : PC x64, ou WSL2 + `usbipd-win` + AltServer-Linux (`INSTALL-IPHONE.md` §0). Tant que ce n'est pas réglé, le gate M1 reste ouvert. |
 | **A2 ou C2 KO** (le compteur du widget ne suit pas) | Verdict de gate **négatif**. On tente d'abord **AltStore**, qui gère mieux les app groups. Si ça résiste : bascule vers « le widget fetch lui-même ». C'est pré-câblé — le widget lit à travers `SnapshotSource`, seul le fournisseur change, rien d'autre du code n'est remis en cause. |
 | **A2 ligne Keychain KO** | Non bloquant en v1 : les widgets n'ont besoin d'aucun token. À signaler, ça peut vouloir dire une reconnexion par semaine (cf. C2.1). |
 | **A4 KO** (redirection non captée) | Le flux OAuth Codex est à repenser sur iOS — le serveur loopback est le point faible. Claude reste utilisable seul entre-temps : l'app fonctionne avec un seul provider connecté. |
@@ -345,6 +381,7 @@ données — pas **« App Group indisponible »**, pas **« Aucune donnée »**.
 
 | # | Critère | Tests |
 |---|---|---|
+| 0 | *(préalable)* le PC voit-il l'iPhone ? | **A0** — bloquant sur PC ARM64 |
 | 1 | CI verte (tests + IPA) | déjà acquis · A1 pour l'installabilité |
 | 2 | Login Claude **et** Codex | A3, A4 |
 | 3 | Dashboard = vraies fenêtres + crédits | A5 |

@@ -19,6 +19,13 @@
   faire le test de gate décrit dans `docs/INSTALL-IPHONE.md` §6 (grille de lecture des
   messages de diagnostic incluse). Le verdict T1.4 en dépend, et avec lui la validité de
   l'architecture « l'app écrit, le widget lit un snapshot ».
+- **⚠️ Nouveau blocage identifié le 2026-07-30 (T4.5) : le PC de Tristan est sous Windows
+  ARM64** (ASUS Vivobook S 15, Snapdragon X Plus). Le pilote USB Apple est un pilote **noyau**
+  x64 ; Windows on ARM n'émule que les applications. **Sideloadly ne verra très probablement
+  jamais l'iPhone**, et le refresh Wi-Fi n'est pas un repli (appairage USB initial exigé).
+  Voies documentées en `docs/INSTALL-IPHONE.md` §0 ; le test **A0** de `TEST-PLAN.md` tranche
+  en 15 min. Tant que ce point n'est pas réglé, **T1.2 n'est pas seulement en attente : il
+  n'est pas exécutable**.
 - **`docs/TEST-PLAN.md` (T4.4, 2026-07-30) est le protocole à dérouler** : 19 tests numérotés
   couvrant les 7 critères, en trois séances (A = J0 en main, B = arrière-plan à J+1, C =
   re-signature à J+7), avec une fiche de relevé à renvoyer. Le gate se joue en **A2 puis C2** :

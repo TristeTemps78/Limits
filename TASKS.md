@@ -191,6 +191,20 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
+- ✅ done — **T4.5 Contrainte PC ARM64** — @claude-opus — 2026-07-30
+  Le PC de Tristan est un ASUS Vivobook S 15 (Snapdragon X Plus, **Windows 11 ARM64**).
+  Parler à un iPhone en USB passe par `usbaapl64.sys`, un **pilote noyau** que Windows on ARM
+  ne peut pas charger (l'émulation x64 couvre les applications, pas les pilotes) et qu'Apple
+  n'a pas compilé pour ARM64. **Le sideload tel que décrit en §1 ne fonctionnera pas sur cette
+  machine**, et le repli « tout en Wi-Fi » n'existe pas : Sideloadly exige un premier
+  appairage USB.
+  `INSTALL-IPHONE.md` **§0** documente la contrainte et les trois voies (PC x64 emprunté /
+  WSL2 + `usbipd-win` + AltServer-Linux / renoncer), avec leurs sources.
+  `TEST-PLAN.md` gagne le test **A0**, préalable bloquant : 15 min pour savoir si le PC voit
+  l'iPhone. Et **C1 est BLOQUÉ par construction si le test se fait sur un PC emprunté** — la
+  re-signature hebdomadaire suppose une machine disponible chaque semaine.
+  Constaté sur la machine (2026-07-30) : aucun pilote ni service Apple installé, WSL absent.
+  ⚠️ Le blocage est **déduit, pas encore constaté** — c'est A0 qui tranchera.
 - ✅ done — **T4.4 Plan de test device** — @claude-opus — 2026-07-30
   `docs/TEST-PLAN.md` : les 7 critères de la checklist finale en 19 tests numérotés, sur
   trois séances (J0 en main / J+1 pour l'arrière-plan / J+7 pour la re-signature), avec une

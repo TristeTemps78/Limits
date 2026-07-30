@@ -4,6 +4,37 @@
 > méthode actuelle : IPA non signée produite par GitHub Actions → **Sideloadly** sur
 > Windows la signe avec ton Apple ID gratuit et l'installe.
 
+## 0. ⚠️ Prérequis : le PC doit être **x64**, pas ARM64
+
+**Le PC de Tristan est un ASUS Vivobook S 15 (Snapdragon X Plus, Windows 11 ARM64) — la
+méthode décrite ci-dessous n'y fonctionnera très probablement pas.** Le problème n'est pas
+Sideloadly, c'est la couche en dessous :
+
+- parler à un iPhone en USB passe par le pilote **Apple Mobile Device USB** (`usbaapl64.sys`),
+  installé par iTunes / l'app Apple Devices ; c'est un **pilote noyau** ;
+- Windows on ARM émule les **applications** x64, **jamais les pilotes noyau** ;
+- Apple n'a pas compilé les siens pour ARM64.
+
+Conséquence : Sideloadly peut se lancer (application x64, émulée), mais l'iPhone ne sera pas
+détecté. Et **le repli « tout en Wi-Fi » n'en est pas un** : la FAQ Sideloadly impose un
+premier appairage **par USB** avant tout sideload sans fil.
+
+> Statut : **fortement probable, pas encore constaté sur cette machine**. Le test qui tranche
+> est en tête du protocole (`TEST-PLAN.md`, test **A0**) et prend 15 minutes.
+
+### Les trois voies possibles
+
+| Voie | Ce que ça coûte | Ce que ça règle — et ce que ça ne règle pas |
+|---|---|---|
+| **1. Un PC x64** (autre machine, prêt d'un proche) | rien à installer d'exotique, chemin documenté ci-dessous | Règle l'installation. **Ne règle pas le renouvellement** : le certificat gratuit expire tous les 7 jours et il faut ce PC à chaque fois, ou une re-signature manuelle hebdomadaire (cf. §5). |
+| **2. WSL2 + `usbipd-win` + AltServer-Linux** sur l'ARM64 | installations système, droits admin, montage à faire | Contourne exactement le point de blocage : côté Linux, `usbmuxd` parle à l'iPhone **en espace utilisateur** (libusb), sans pilote noyau Apple. `usbipd-win` annonce le support **Windows 10/11 ARM64**, et AltServer-Linux publie des binaires **aarch64**. Permet aussi le renouvellement automatique depuis la même machine. ⚠️ Dernière release d'AltServer-Linux : **2024-04-17** — non vérifiée avec les iOS récents, et jamais testée ici. |
+| **3. Renoncer au sideload** | — | Le code reste juste et testé, mais rien ne sera jamais prouvé sur device : le gate M1 resterait ouvert indéfiniment. |
+
+Sources : [Sideloadly FAQ](https://sideloadly.io/faq.html) ·
+[Microsoft Q&A — pilotes Apple et ARM64](https://learn.microsoft.com/en-us/answers/questions/3863362/apple-usb-tethering-is-not-working-on-my-windows11) ·
+[usbipd-win (prérequis système)](https://github.com/dorssel/usbipd-win/blob/master/README.md) ·
+[AltServer-Linux (releases)](https://github.com/NyaMisty/AltServer-Linux/releases)
+
 ## Ce qu'il faut savoir avant (limites du compte gratuit — non contournables)
 
 - L'app est signée pour **7 jours**. Après, elle refuse de se lancer tant qu'elle n'est
