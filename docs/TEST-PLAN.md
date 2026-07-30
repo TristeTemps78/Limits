@@ -65,7 +65,16 @@ qui n'est pas la même information que `FAIL`. Les captures d'écran sont les bi
 
 # Séance A — J0, iPhone en main (~45 min)
 
-## A0 — ⚠️ Le PC peut-il seulement parler à l'iPhone ? · *préalable à tout*
+## A0 — ✅ **PASS le 2026-07-30** — le PC peut-il parler à l'iPhone ?
+
+> `idevice_id -l` renvoie un appareil, `idevicepair validate` → SUCCESS, `ideviceinfo` répond :
+> **iPhone 15 (iPhone15,4) sous iOS 26.0.1**. Le blocage ARM64 est contourné pour de bon
+> (`SIDELOAD-ARM64.md`, « Où on en est »). Le reste du protocole est exécutable.
+
+*Procédure conservée ci-dessous pour la reproduire après un redémarrage ou un
+rebranchement — `usbipd attach` est à refaire à chaque fois.*
+
+### Rappel de la procédure · *préalable à tout*
 
 Le PC de Tristan est un **ASUS Vivobook S 15 sous Windows ARM64** (Snapdragon X Plus). Le
 pilote USB Apple est un **pilote noyau x64**, et Windows on ARM n'émule pas les pilotes

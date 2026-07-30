@@ -196,7 +196,13 @@
   5.3.0 arm64 installé et fonctionnel** (`usbipd list` répond — le support ARM64 est un fait
   constaté, plus une lecture de README) ; `usbmuxd` 1.1.1 + `libimobiledevice` 1.4.0 ;
   `sideloader` (ELF aarch64) + `SideStore.ipa` + `Limits.ipa` dans `~/limits-sideload`.
-  **Bloqué sur un geste humain : brancher l'iPhone en USB** (étapes 3, 6, 7).
+  **✅ A0 PASS le 2026-07-30 — le contournement ARM64 fonctionne** : `usbipd bind --force` +
+  `attach --wsl` → **Attached** ; côté Linux `idevicepair validate` → SUCCESS et `ideviceinfo`
+  répond (**iPhone 15 / iPhone15,4, iOS 26.0.1**). Deux pièges documentés dans le guide :
+  « Device busy (exported) » (Windows tient l'appareil → `--force`, réversible) et
+  « no WSL 2 distribution running » (`attach` exige une distro déjà démarrée).
+  Reste les étapes **interactives**, à faire par Tristan dans son propre terminal : elles
+  demandent son Apple ID (jamais saisi par un agent).
   Deux détails absents des docs amont, notés dans le guide : `usbmuxd.service` est installé
   désactivé, et `sideloader tool list` exige un appareil connecté.
 - ✅ done — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30

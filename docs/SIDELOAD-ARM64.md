@@ -44,7 +44,9 @@ Les étapes qui ne demandent pas l'iPhone ont été exécutées et **vérifiées
 | 2. usbipd-win | ✅ **5.3.0** installé depuis le MSI **arm64** ; `usbipd list` répond et liste les périphériques — **l'ARM64 fonctionne, ce n'est plus une hypothèse** |
 | 4. outils Linux | ✅ `usbmuxd` 1.1.1-7, `libimobiledevice` 1.4.0, `libplist`, `unzip` |
 | 5. binaires | ✅ dans `~/limits-sideload` : `sideloader` (ELF aarch64, `1.0-pre4`, répond à `--help`), `SideStore.ipa` (28 Mo), `Limits.ipa` (652 Ko, release v1.0) |
-| 3, 6, 7 | ⏳ **en attente de l'iPhone branché** — rien de plus ne peut avancer sans lui |
+| 3. iPhone → Linux | ✅ `usbipd bind --force` puis `attach --wsl` : l'appareil passe à **Attached** |
+| **4. `idevice_id -l`** | ✅ **le blocage ARM64 est contourné, constaté** : `idevicepair validate` → SUCCESS, `ideviceinfo` répond (iPhone15,4 sous **iOS 26.0.1**) |
+| 6, 7 | ⏳ étapes interactives : Apple ID à saisir par Tristan lui-même |
 
 Deux détails relevés en cours de route, qui ne sont pas dans les docs amont :
 
@@ -100,6 +102,15 @@ usbipd attach --wsl --busid 2-4
 
 `bind` ne se fait qu'une fois par appareil ; `attach` est à refaire **à chaque
 rebranchement** (et après un redémarrage).
+
+Deux pièges rencontrés ici, tous deux réglés :
+
+- **« Device busy (exported) »** à l'`attach` : Windows tient l'appareil. Il faut
+  `usbipd bind --force --busid 4-1`. C'est réversible (`usbipd unbind --busid 4-1`) ; tant que
+  le partage est forcé, l'iPhone n'apparaît plus côté Windows (Photos, explorateur).
+- **« There is no WSL 2 distribution running »** : `attach --wsl` exige qu'une distro tourne
+  déjà. Ouvrir un terminal Ubuntu et l'y laisser — par exemple avec `sudo usbmuxd -f -v`, qui
+  fait les deux à la fois (garde la distro vivante **et** démarre le démon).
 
 **Point de contrôle**, côté Ubuntu :
 
