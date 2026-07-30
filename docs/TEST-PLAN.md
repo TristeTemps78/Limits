@@ -17,10 +17,11 @@ Installation : `INSTALL-IPHONE.md` §1-5. Grille de lecture du diagnostic App Gr
 
 ## Ce dont tu as besoin
 
-- L'iPhone, **un PC x64** avec Sideloadly, et l'IPA de la
+- L'iPhone, le PC, et l'IPA de la
   [Release v1.0](https://github.com/TristeTemps78/Limits/releases/tag/v1.0).
-  ⚠️ **Le Vivobook S 15 est sous Windows ARM64** : il n'a pas de pilote USB Apple utilisable.
-  C'est l'objet du test **A0**, à faire avant tout le reste (`INSTALL-IPHONE.md` §0).
+  ⚠️ **Le Vivobook S 15 est sous Windows ARM64** : pas de pilote USB Apple utilisable, donc
+  ni iTunes ni Sideloadly. Le montage de contournement est dans **`SIDELOAD-ARM64.md`** et
+  doit être fait **avant** tout le reste — c'est l'objet du test **A0**.
 - Un poste où lancer une **vraie session Claude Code** (pour B2) et de quoi comparer les
   chiffres : `/usage` dans Claude Code.
 - Les comptes Claude Pro/Max et ChatGPT Plus/Pro. **Tu saisis tes identifiants toi-même,
@@ -71,25 +72,23 @@ pilote USB Apple est un **pilote noyau x64**, et Windows on ARM n'émule pas les
 noyau : l'iPhone risque de n'être jamais détecté. Détail et voies de sortie :
 `INSTALL-IPHONE.md` §0. **Ce test décide si les 19 autres sont seulement exécutables.**
 
-**Gestes** (15 min) :
-1. Installer l'app **Apple Devices** (Microsoft Store) ou iTunes, et **Sideloadly**.
-2. Brancher l'iPhone en USB, répondre **« Se fier à cet ordinateur »**.
-3. Ouvrir le **Gestionnaire de périphériques** et chercher **« Apple Mobile Device USB
-   Device »** (ou « Apple iPhone » sous *Périphériques portables*).
-4. Ouvrir Sideloadly : l'iPhone apparaît-il dans la liste des appareils ?
+**Voie retenue** : WSL2 + `usbipd-win` + signature sous Linux — le montage complet, avec un
+point de contrôle par étape, est dans **`SIDELOAD-ARM64.md`**.
 
-**Attendu si ça marche** (le scénario optimiste) : l'iPhone est listé dans Sideloadly avec
-son nom. Enchaîner sur A1.
+**Le geste qui tranche**, une fois les étapes 1 à 4 de ce guide passées, côté Ubuntu :
 
-**Attendu si le blocage est confirmé** : pas d'« Apple Mobile Device USB Device » dans le
-gestionnaire, ou un périphérique en erreur (triangle jaune, code 39 / 52 = pilote non
-chargeable), et Sideloadly qui ne voit aucun appareil.
+```bash
+idevice_id -l
+```
 
-**Si c'est bloqué** : **ne teste rien d'autre**, tout le reste en dépend. Remonte-le tel quel
-et on choisit une voie (`INSTALL-IPHONE.md` §0) : PC x64 emprunté, ou chaîne
-WSL2 + `usbipd-win` + AltServer-Linux sur cette machine. Marque alors **A1 à C3 = BLOQUÉ**,
-ce qui est une information exacte : le produit n'est pas en cause, la chaîne d'installation
-l'est.
+**Attendu** : un UDID s'affiche. Le blocage ARM64 est alors contourné, et tout ce qui suit
+redevient du sideload ordinaire. *(Ne recopie pas l'UDID dans ton retour : « ça renvoie bien
+un UDID » suffit — le dépôt est public.)*
+
+**Si rien ne s'affiche** : le tableau « Si la chaîne casse » de `SIDELOAD-ARM64.md` dit où
+regarder selon l'étape qui a lâché. **Ne teste rien d'autre**, tout le reste en dépend :
+marque **A1 à C3 = BLOQUÉ**, ce qui est une information exacte — le produit n'est pas en
+cause, la chaîne d'installation l'est.
 
 ## A1 — Installation et premier lancement · *critère 1*
 
@@ -338,10 +337,11 @@ n'est pas passé.
 
 ## C1 — Le renouvellement Wi-Fi a-t-il marché ? · *critère 7*
 
-> **Si A0 a imposé de passer par un PC emprunté**, ce test est **BLOQUÉ par construction** :
-> le renouvellement automatique suppose une machine allumée sur le même Wi-Fi **chaque
-> semaine**. C'est le vrai coût caché de la voie « PC x64 emprunté », et la raison pour
-> laquelle la chaîne WSL2 sur ta propre machine, si elle tient, vaut son montage.
+> **Voie ARM64 (celle qui est en place)** : il n'y a plus de PC dans la boucle. Le test
+> devient **« SideStore a-t-il re-signé Limits tout seul avant l'expiration ? »** — ouvrir
+> SideStore et vérifier que Limits n'est pas expiré, sans rien brancher.
+> *(Sur un PC x64 emprunté, ce test serait au contraire **BLOQUÉ par construction** : le
+> renouvellement suppose la machine allumée sur le même Wi-Fi chaque semaine.)*
 
 **Attendu** : avec l'auto-refresh Sideloadly activé (§5) et le PC allumé sur le même Wi-Fi,
 l'app se relance sans rien rebrancher. **`FAIL`** : « Unable to verify app » au lancement — il
@@ -369,7 +369,7 @@ données — pas **« App Group indisponible »**, pas **« Aucune donnée »**.
 
 | Échec | Conséquence |
 |---|---|
-| **A0 KO** (iPhone invisible du PC ARM64) | Rien n'est testable, et **le produit n'est pas en cause**. Il faut d'abord une chaîne d'installation : PC x64, ou WSL2 + `usbipd-win` + AltServer-Linux (`INSTALL-IPHONE.md` §0). Tant que ce n'est pas réglé, le gate M1 reste ouvert. |
+| **A0 KO** (iPhone invisible depuis Linux) | Rien n'est testable, et **le produit n'est pas en cause**. Reprendre au maillon qui a lâché (`SIDELOAD-ARM64.md`, « Si la chaîne casse ») ; en dernier recours, PC x64 emprunté. Tant que ce n'est pas réglé, le gate M1 reste ouvert. |
 | **A2 ou C2 KO** (le compteur du widget ne suit pas) | Verdict de gate **négatif**. On tente d'abord **AltStore**, qui gère mieux les app groups. Si ça résiste : bascule vers « le widget fetch lui-même ». C'est pré-câblé — le widget lit à travers `SnapshotSource`, seul le fournisseur change, rien d'autre du code n'est remis en cause. |
 | **A2 ligne Keychain KO** | Non bloquant en v1 : les widgets n'ont besoin d'aucun token. À signaler, ça peut vouloir dire une reconnexion par semaine (cf. C2.1). |
 | **A4 KO** (redirection non captée) | Le flux OAuth Codex est à repenser sur iOS — le serveur loopback est le point faible. Claude reste utilisable seul entre-temps : l'app fonctionne avec un seul provider connecté. |

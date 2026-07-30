@@ -27,13 +27,17 @@ premier appairage **par USB** avant tout sideload sans fil.
 | Voie | Ce que ça coûte | Ce que ça règle — et ce que ça ne règle pas |
 |---|---|---|
 | **1. Un PC x64** (autre machine, prêt d'un proche) | rien à installer d'exotique, chemin documenté ci-dessous | Règle l'installation. **Ne règle pas le renouvellement** : le certificat gratuit expire tous les 7 jours et il faut ce PC à chaque fois, ou une re-signature manuelle hebdomadaire (cf. §5). |
-| **2. WSL2 + `usbipd-win` + AltServer-Linux** sur l'ARM64 | installations système, droits admin, montage à faire | Contourne exactement le point de blocage : côté Linux, `usbmuxd` parle à l'iPhone **en espace utilisateur** (libusb), sans pilote noyau Apple. `usbipd-win` annonce le support **Windows 10/11 ARM64**, et AltServer-Linux publie des binaires **aarch64**. Permet aussi le renouvellement automatique depuis la même machine. ⚠️ Dernière release d'AltServer-Linux : **2024-04-17** — non vérifiée avec les iOS récents, et jamais testée ici. |
+| **2. WSL2 + `usbipd-win`, puis signature sous Linux** ← **voie retenue** | installations système, droits admin, un montage en 7 étapes | Contourne exactement le point de blocage : côté Linux, `usbmuxd` parle à l'iPhone **en espace utilisateur**, sans pilote noyau Apple. Guide complet et vérifié maillon par maillon : **`SIDELOAD-ARM64.md`**. En passant par **SideStore**, le renouvellement se fait ensuite **sur l'iPhone, sans PC** — mieux que la voie d'origine. |
 | **3. Renoncer au sideload** | — | Le code reste juste et testé, mais rien ne sera jamais prouvé sur device : le gate M1 resterait ouvert indéfiniment. |
+
+> **Correction (2026-07-30)** : une première version de ce paragraphe proposait
+> **AltServer-Linux** pour la voie 2, en affirmant qu'il réglait aussi le renouvellement.
+> C'est faux : sa dernière release date du **2022-04-17** et son README liste toujours
+> « Support Wi-Fi Refresh » en TODO. Il est écarté au profit de Sideloader + SideStore.
 
 Sources : [Sideloadly FAQ](https://sideloadly.io/faq.html) ·
 [Microsoft Q&A — pilotes Apple et ARM64](https://learn.microsoft.com/en-us/answers/questions/3863362/apple-usb-tethering-is-not-working-on-my-windows11) ·
-[usbipd-win (prérequis système)](https://github.com/dorssel/usbipd-win/blob/master/README.md) ·
-[AltServer-Linux (releases)](https://github.com/NyaMisty/AltServer-Linux/releases)
+[usbipd-win (prérequis système)](https://github.com/dorssel/usbipd-win/blob/master/README.md)
 
 ## Ce qu'il faut savoir avant (limites du compte gratuit — non contournables)
 

@@ -191,10 +191,27 @@
   README réécrit (ce qui marche, architecture en trois phrases, une seule commande utile).
   `docs/INSTALL-IPHONE.md` §6 : **protocole du test de gate M1** avec la grille de lecture
   complète des messages de diagnostic et les 5 points de retour attendus.
-- 🔒 in-progress — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30
-  Voie choisie par Tristan : WSL2 + `usbipd-win` + signature sous Linux. Écrire le guide
-  vérifié maillon par maillon (`docs/SIDELOAD-ARM64.md`) et corriger ce que T4.5 avait écrit
-  de faux sur AltServer-Linux.
+- ✅ done — **T4.6 Chaîne de sideload ARM64** — @claude-opus — 2026-07-30
+  `docs/SIDELOAD-ARM64.md` : montage en 7 étapes, un **point de contrôle par étape** pour
+  s'arrêter net dès que la réalité diverge. Principe : côté Linux, `usbmuxd` parle à l'iPhone
+  **en espace utilisateur** — l'architecture du PC cesse d'être pertinente.
+  État réel de chaque maillon, vérifié par l'API GitHub le 2026-07-30 :
+  - **usbipd-win** publie officiellement `usbipd-win_5.3.0_arm64.msi` (2025-10-11). L'issue
+    #1130 laissait croire que l'ARM64 était encore expérimental : les assets prouvent le
+    contraire. C'est pour ça qu'on lit les assets et pas seulement les fils de discussion.
+  - **Sideloader** (Dadoum) fournit `sideloader-cli-aarch64-linux-gnu` — pre-release
+    `1.0-pre4` (2024-10-01) mais dépôt actif (push 2026-02-12). C'est le signeur.
+  - **SideStore** `0.6.3` (2026-05-05), dépôt poussé le 2026-07-29 : re-signature **sur
+    l'appareil**, donc plus de PC dans la boucle après le setup.
+  - **AltServer-Linux écarté** : dernière release **2022-04-17** (et non 2024 comme lu
+    d'abord) et « Support Wi-Fi Refresh » toujours en TODO. `INSTALL-IPHONE.md` §0 porte la
+    correction explicite plutôt que de la réécrire en silence.
+  Conséquences sur le protocole : **A0** devient `idevice_id -l`, et **C1** devient « SideStore
+  a-t-il re-signé tout seul ? » — meilleur que la voie d'origine, qui exigeait un PC allumé
+  sur le même Wi-Fi chaque semaine.
+  ⚠️ **Rien de cette chaîne n'a encore été exécuté.** Inconnue principale : SideStore signe-t-il
+  correctement un bundle **avec extension widget** ? Sans widget, le protocole de test n'a
+  aucun sens — c'est le premier point à vérifier à l'étape 7.
 - ✅ done — **T4.5 Contrainte PC ARM64** — @claude-opus — 2026-07-30
   Le PC de Tristan est un ASUS Vivobook S 15 (Snapdragon X Plus, **Windows 11 ARM64**).
   Parler à un iPhone en USB passe par `usbaapl64.sys`, un **pilote noyau** que Windows on ARM

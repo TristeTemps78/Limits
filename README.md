@@ -11,6 +11,8 @@ IPA non signée produite par GitHub Actions, installée via Sideloadly.
 - 🤖 Règles agents : [AGENTS.md](AGENTS.md)
 - 📱 Installation sur iPhone : [docs/INSTALL-IPHONE.md](docs/INSTALL-IPHONE.md)
 - 🧪 Protocole de validation sur device : [docs/TEST-PLAN.md](docs/TEST-PLAN.md)
+- 🧩 Installation depuis un PC **Windows ARM64** (pas de pilote USB Apple) :
+  [docs/SIDELOAD-ARM64.md](docs/SIDELOAD-ARM64.md)
 - 🔍 Vérification des flows OAuth (valeur par valeur, avec sources) :
   [docs/oauth-verification-2026-07-29.md](docs/oauth-verification-2026-07-29.md)
 

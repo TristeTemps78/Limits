@@ -23,9 +23,16 @@
   ARM64** (ASUS Vivobook S 15, Snapdragon X Plus). Le pilote USB Apple est un pilote **noyau**
   x64 ; Windows on ARM n'émule que les applications. **Sideloadly ne verra très probablement
   jamais l'iPhone**, et le refresh Wi-Fi n'est pas un repli (appairage USB initial exigé).
-  Voies documentées en `docs/INSTALL-IPHONE.md` §0 ; le test **A0** de `TEST-PLAN.md` tranche
-  en 15 min. Tant que ce point n'est pas réglé, **T1.2 n'est pas seulement en attente : il
-  n'est pas exécutable**.
+  Voies documentées en `docs/INSTALL-IPHONE.md` §0. Tant que ce point n'est pas réglé,
+  **T1.2 n'est pas seulement en attente : il n'est pas exécutable**.
+- **Voie retenue par Tristan (T4.6) : `docs/SIDELOAD-ARM64.md`** — WSL2 + `usbipd-win`
+  (MSI **arm64** officiel depuis la 5.3.0) → `usbmuxd` en espace utilisateur → **Sideloader**
+  (aarch64) pour signer → **SideStore**, qui re-signe ensuite **sur l'iPhone, sans PC**.
+  Le montage n'a **jamais été exécuté** : chaque étape a son point de contrôle, et le test A0
+  se réduit à `idevice_id -l`. Inconnue à lever en priorité : SideStore signe-t-il un bundle
+  **avec extension widget** ? Sans widget, rien n'est testable.
+  AltServer-Linux a été **écarté** (release de 2022, refresh Wi-Fi jamais implémenté) — ne pas
+  le réintroduire.
 - **`docs/TEST-PLAN.md` (T4.4, 2026-07-30) est le protocole à dérouler** : 19 tests numérotés
   couvrant les 7 critères, en trois séances (A = J0 en main, B = arrière-plan à J+1, C =
   re-signature à J+7), avec une fiche de relevé à renvoyer. Le gate se joue en **A2 puis C2** :
